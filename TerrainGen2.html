@@ -7,39 +7,58 @@
 	<script>
 		var c = document.getElementById("world");
 		var ctx = c.getContext("2d");
-		const MAPSIZE = 10;
+		const MAPSIZE = 1000;
 		var map = new Array(MAPSIZE);
 		
+		//Classes: -----------------
 		function Tile()
 		{
 			this.elevation = 0;
 		}
-
-		for(i = 0; i < MAPSIZE; i++)
+		function Interface()
 		{
+			this.zoom = 0;
+			this.yView = 0;
+			this.xView = 0;
+		}
+		//End Classes--------------
+		
+		var pView = new Interface();
+		
+		for(i = 0; i < MAPSIZE; i++){
 			map[i] = new Array(MAPSIZE);
-			for(j = 0; j < MAPSIZE; j++)
-			{
+			for(j = 0; j < MAPSIZE; j++){
 				map[i][j] = new Tile();
 			}
 		}
-		//Generate Landmass:
 		
 		
-		function draw()
+		function drawEntireMap()
 		{
-			for(i = 0; i < MAPSIZE; i++)
-			{
-				for(j = 0; j < MAPSIZE; j++)
-				{
-					if(map[i][j].elevation == 0)
-					{
-						ctx.fillStyle = "blue";
-						ctx.fillRect(j, i, 1, 1);
-					}
+			for(i = 0; i < MAPSIZE; i++){
+				for(j = 0; j < MAPSIZE; j++){
+					ctx.fillStyle = "blue";
+					ctx.fillRect(j, i, 1, 1);
 				}
 			}
 		}
+		function draw()
+		{
+			var zoom = 20-pView.zoom;
+			for(i = pView.yView; i < pView.yView + 20; i++){
+				for(j = pView.xView; j < pView.xView + 20; j++){
+					ctx.fillStyle = "blue";
+					ctx.fillRect(j*zoom, i*zoom, 1*zoom, 1*zoom);
+				}
+			}
+		}
+		function safeC(a)
+		{
+			if(a > MAPSIZE){ return a - MAPSIZE; }
+			if(a < 0){ return MAPSIZE - a; }
+			return a;
+		}
+
 	</script>
 	</body>
 </html>
