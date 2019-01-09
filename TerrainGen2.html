@@ -9,7 +9,7 @@
 		var ctx = c.getContext("2d");
 		const MAPSIZE = 1000;
 		var map = new Array(MAPSIZE);
-		const CONTSIZE = 100;
+		const CONTSIZE = 10;
 		var points = 3;
 		var steepness = 0.2;
 		
@@ -47,8 +47,7 @@
 						ctx.fillStyle = "blue";
 					}
 					else{
-						ctx.fillStyle = "black";
-						ctx.fillRect(j*1, i*1, 100, 100);
+						ctx.fillStyle = "black";	
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -81,29 +80,27 @@
 			}
 			return cores;
 		}
-		var core = elevationPoints(3);
+		var coreList = elevationPoints(3);
 		function elevationSpread(size, cores, coreX, coreY){
 			var cX = coreX;
 			var cY = coreY;
 			if(size == CONTSIZE){
-				cx = cores[0];
-				cy = cores[1];
+				cX = coreList[0][0];
+				cY = coreList[1][1];
 			}
-			if(size >= 0 && cX > 1 && cY > 1 && cX < MAPSIZE-1 && cY < MAPSIZE-1){
-				map[cX + 1][cY].elevation = (map[cX][cY].elevation - (Math.random() * steepness));
-				map[cX - 1][cY].elevation = (map[cX][cY].elevation - (Math.random() * steepness));
-				map[cX][cY + 1].elevation = (map[cX][cY].elevation - (Math.random() * steepness));
-				map[cX][cY - 1].elevation = (map[cX][cY].elevation - (Math.random() * steepness));
-				elevationSpread(size--, cores, cX + 1, cY);
-				elevationSpread(size--, cores, cX - 1, cY);
-				elevationSpread(size--, cores, cX, cY + 1);
-				elevationSpread(size--, cores, cX, cY - 1);
+			if(size >= 0 && cX > 0 && cY > 0 && cX < MAPSIZE-1 && cY < MAPSIZE-1){
+				map[cY][cX] = 1 - (Math.random() * steepness);
+				console.log("worked");
+				elevationSpread(--size, cores, cX + 1, cY);
+				elevationSpread(--size, cores, cX - 1, cY);
+				elevationSpread(--size, cores, cX, cY + 1);
+				elevationSpread(--size, cores, cX, cY - 1);
 			}
 			else{
 				return;
 			}
 		}
-		elevationSpread(CONTSIZE, points, 0, 0);
+		elevationSpread(CONTSIZE, coreList.length, 0, 0);
 		drawEntireMap();
 
 	</script>
