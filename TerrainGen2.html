@@ -13,6 +13,7 @@
 		//Classes: -----------------
 		function Tile()
 		{
+			this.type = 'w';
 			this.elevation = 0;
 		}
 		function Interface()
@@ -57,6 +58,20 @@
 			if(a > MAPSIZE){ return a - MAPSIZE; }
 			if(a < 0){ return MAPSIZE - a; }
 			return a;
+		}
+
+		function elevationPoints(num){
+			for(i = 0; i < num; i++){
+				var elevX = Math.floor(Math.random() * MAPSIZE);
+				var elevY = Math.floor(Math.random() * MAPSIZE);
+				map[elevX][elevY].type = 'm';
+				map[elevX][elevY].elevation = 1;
+			}
+		}
+
+		function elevationPoints(){
+			var core = getRandom();
+
 		}
 
 	</script>
