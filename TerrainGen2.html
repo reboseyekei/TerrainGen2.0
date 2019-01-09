@@ -9,9 +9,9 @@
 		var ctx = c.getContext("2d");
 		const MAPSIZE = 1000;
 		var map = new Array(MAPSIZE);
-		const CONTSIZE = 10;
+		const CONTSIZE = 20;
 		var points = 3;
-		var steepness = 0.2;
+		var steepness = 0.01;
 		
 		
 		//Classes: -----------------
@@ -81,7 +81,7 @@
 			return cores;
 		}
 		var coreList = elevationPoints(3);
-		function elevationSpread(size, cores, coreX, coreY){
+		function elevationSpread(size, cores, coreX, coreY, lastDir){
 			var cX = coreX;
 			var cY = coreY;
 			if(size == CONTSIZE){
@@ -89,18 +89,27 @@
 				cY = coreList[1][1];
 			}
 			if(size >= 0 && cX > 0 && cY > 0 && cX < MAPSIZE-1 && cY < MAPSIZE-1){
-				map[cY][cX] = 1 - (Math.random() * steepness);
-				console.log("worked");
-				elevationSpread(--size, cores, cX + 1, cY);
-				elevationSpread(--size, cores, cX - 1, cY);
-				elevationSpread(--size, cores, cX, cY + 1);
-				elevationSpread(--size, cores, cX, cY - 1);
+				map[cY][cX] = 1;
+				console.log(cX);
+				if(lastDir != 0){
+					elevationSpread(--size, cores, cX + 1, cY, 0);
+				}
+				if(lastDir != 1){
+					elevationSpread(--size, cores, cX - 1, cY, 1);
+				}
+				if(lastDir != 2){
+					elevationSpread(--size, cores, cX, cY + 1, 2);
+				}
+				if(lastDir != 3){
+					elevationSpread(--size, cores, cX, cY - 1, 3);
+				}
 			}
-			else{
-				return;
+			else if(size > 0){
+				elevationSpread(--size, cores, cX, cY);
 			}
+			return;
 		}
-		elevationSpread(CONTSIZE, coreList.length, 0, 0);
+		elevationSpread(CONTSIZE, coreList.length, 0, 0, 0);
 		drawEntireMap();
 
 	</script>
