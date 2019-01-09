@@ -1,24 +1,45 @@
 <!DOCTYPE html>
 <html>
 	<head>
-	<canvas id="gameBoard" width="768" height="768" ></canvas>
+	<canvas id="world" width="768" height="768" ></canvas>
 	</head>
 	<body>
 	<script>
-		const MapSize = 1000;
-		var map = new Array(MapSize);
-
-		for(i = 0; i < MapSize; i++)
+		var c = document.getElementById("world");
+		var ctx = c.getContext("2d");
+		const MAPSIZE = 10;
+		var map = new Array(MAPSIZE);
+		
+		function Tile()
 		{
-			map[i] = new Array(MapSize);
-			for(j = 0; j < MapSize; j++)
+			this.elevation = 0;
+		}
+
+		for(i = 0; i < MAPSIZE; i++)
+		{
+			map[i] = new Array(MAPSIZE);
+			for(j = 0; j < MAPSIZE; j++)
 			{
 				map[i][j] = new Tile();
 			}
 		}
+		//Generate Landmass:
 		
 		
-		
+		function draw()
+		{
+			for(i = 0; i < MAPSIZE; i++)
+			{
+				for(j = 0; j < MAPSIZE; j++)
+				{
+					if(map[i][j].elevation == 0)
+					{
+						ctx.fillStyle = "blue";
+						ctx.fillRect(j, i, 1, 1);
+					}
+				}
+			}
+		}
 	</script>
 	</body>
 </html>
