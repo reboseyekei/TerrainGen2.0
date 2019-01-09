@@ -1,14 +1,18 @@
 <!DOCTYPE html>
 <html>
-	<head>
+<head>
 	<canvas id="world" width="768" height="768" ></canvas>
-	</head>
-	<body>
+</head>
+<body>
 	<script>
 		var c = document.getElementById("world");
 		var ctx = c.getContext("2d");
 		const MAPSIZE = 1000;
 		var map = new Array(MAPSIZE);
+		var contSize = 100;
+		var points = 3;
+		var steepness = 0.2;
+		var core = elevationPoints(points);
 		
 		//Classes: -----------------
 		function Tile()
@@ -60,20 +64,42 @@
 			return a;
 		}
 
-		function elevationPoints(num){
-			for(i = 0; i < num; i++){
-				var elevX = Math.floor(Math.random() * MAPSIZE);
-				var elevY = Math.floor(Math.random() * MAPSIZE);
-				map[elevX][elevY].type = 'm';
-				map[elevX][elevY].elevation = 1;
+		function elevationPoints(num)
+		{
+			var core = new Array(num * 2);
+			for(i = 0; i < num * 2; i++){
+				core[i] = Math.floor(Math.random() * MAPSIZE);
+				return core;
+			}
+			while(num > 0){
+				map[core[(num * 2) - 2][map[core[(num * 2) - 1].elevation = 1;
+				num--;
 			}
 		}
 
-		function elevationPoints(){
-			var core = getRandom();
+		function elevationSpread(size, cores, coreX, coreY)
+			if(size = contSize){
+				var coreX = core[(cores * 2) + 2];
+				var coreY = core[(cores * 2) - 1];
+			}
+			if(size => 0){
+				map[coreX + 1][coreY].elevation = (map[coreX][coreY].elevation - (Math.random() * steepness));
+				map[coreX - 1][coreY].elevation = (map[coreX][coreY].elevation - (Math.random() * steepness));
+				map[coreX][coreY + 1].elevation = (map[coreX][coreY].elevation - (Math.random() * steepness));
+				map[coreX][coreY - 1].elevation = (map[coreX][coreY].elevation - (Math.random() * steepness));
+			}
+			else{
+				if(size = )
 
+				if(cores > 0){
+					elevationSpread(contSize, 2, 0, 0, 0);
+				}
+				else{
+					return;
+				}
+			}
 		}
 
 	</script>
-	</body>
+</body>
 </html>
