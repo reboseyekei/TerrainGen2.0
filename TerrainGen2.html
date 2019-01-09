@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+	<head>
+	<canvas id="gameBoard" width="768" height="768" ></canvas>
+	</head>
+	<body>
+		const MapSize = 1000;
+		var map = new Array(MapSize);
+
+		for(i = 0; i < MapSize; i++)
+		{
+			map[i] = new Array(MapSize);
+			for(j = 0; j < MapSize; j++)
+			{
+				map[i][j] = new Tile();
+			}
+		}
+	</body>
+</html>
