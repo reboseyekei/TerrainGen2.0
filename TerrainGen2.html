@@ -47,7 +47,7 @@
 				}
 			}
 		}
-		function draw()
+
 		{
 			var zoom = 20-pView.zoom;
 			for(i = pView.yView; i < pView.yView + 20; i++){
@@ -69,12 +69,12 @@
 			var core = new Array(num * 2);
 			for(i = 0; i < num * 2; i++){
 				core[i] = Math.floor(Math.random() * MAPSIZE);
-				return core;
 			}
 			while(num > 0){
-				map[core[(num * 2) - 2][map[core[(num * 2) - 1].elevation = 1;
+				map[core[num * 2 - 2]][map[core[num * 2 - 1]].elevation = 1;
 				num--;
 			}
+			return core;
 		}
 
 		function elevationSpread(size, cores, coreX, coreY)
@@ -87,18 +87,23 @@
 				map[coreX - 1][coreY].elevation = (map[coreX][coreY].elevation - (Math.random() * steepness));
 				map[coreX][coreY + 1].elevation = (map[coreX][coreY].elevation - (Math.random() * steepness));
 				map[coreX][coreY - 1].elevation = (map[coreX][coreY].elevation - (Math.random() * steepness));
+				elevationSpread(size--, cores, coreX + 1, coreY);
+				elevationSpread(size--, cores, coreX - 1, coreY);
+				elevationSpread(size--, cores, coreX, coreY + 1);
+				elevationSpread(size--, cores, coreX, coreY - 1);
 			}
 			else{
-				if(size = )
-
 				if(cores > 0){
-					elevationSpread(contSize, 2, 0, 0, 0);
+					elevationSpread(contSize, cores--, 0, 0, 0);
 				}
 				else{
 					return;
 				}
 			}
 		}
+
+		function draw();
+		function elevationSpread(contSize, points, 0, 0);
 
 	</script>
 </body>
