@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<canvas id="world" width="1000" height="1000" ></canvas>
+</head>
+<body>
+	<script>
+		var c = document.getElementById("world");
+		var ctx = c.getContext("2d");
+		const MAPSIZE = 500;
+		var map = new Array(MAPSIZE);
+		const CONTSIZE = 100;
+		var points = 1;
+		var steepness = 0.01;
+		
+		
+		//Classes: -----------------
+		function Tile()
+		{
+			this.type = 'w';
+			this.elevation = 1;
+		}
+		function Interface()
+		{
+			this.zoom = 0;
+			this.yView = 0;
+			this.xView = 0;
+		}
+		//End Classes--------------
+		
+		var pView = new Interface();
+		
+		for(i = 0; i < MAPSIZE; i++){
+			map[i] = new Array(MAPSIZE);
+			for(j = 0; j < MAPSIZE; j++){
+				map[i][j] = new Tile();
+			}
+		}
+		
+		
+		function drawEntireMap()
+		{
+			for(i = 0; i < MAPSIZE; i++){
+				for(j = 0; j < MAPSIZE; j++){
+					if(map[i][j].elevation <= 0)
+					{
+						ctx.fillStyle = "blue";
+					}
+					else{
+						ctx.fillStyle = "green";	
+					}
+					ctx.fillRect(j*1, i*1, 1, 1);
+				}
+			}
+		}
+
+		{
+			var zoom = 20-pView.zoom;
+			for(i = pView.yView; i < pView.yView + 20; i++){
+				for(j = pView.xView; j < pView.xView + 20; j++){
+					ctx.fillStyle = "blue";
+					ctx.fillRect(j*zoom, i*zoom, 1*zoom, 1*zoom);
+				}
+			}
+		}
+		function safeC(a)
+		{
+			if(a >= MAPSIZE){ return a - MAPSIZE; }
+			if(a < 0){ return MAPSIZE + a; }
+			return a;
+		}
+		function getDist(y1, x1, y2, x2)
+		{
+			var dx = Math.abs(x2 - x1);
+			var dy = Math.abs(y2 - y1);
+			if (dx > MAPSIZE/2){
+				dx = MAPSIZE - dx;
+			}
+			if (dy > MAPSIZE/2){
+				dy = MAPSIZE - dy;
+			}
+			return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+		}
+		function genOceans(oceanSize, numOceans)
+		{
+			debugger;
+			var oS = oceanSize;
+			var nO = numOceans;
+			var dir = 0;
+			var yCoord = Math.floor(Math.random() * map.length);
+			var	xCoord = Math.floor(Math.random() * map.length);
+			while(oS > 0 && nO > 0)
+			{
+				if(oS == 1)
+				{
+					oS = oceanSize; //Ocean size is too small, go to new location to begin making ocean
+					yCoord = Math.floor(Math.random() * map.length);
+					xCoord = Math.floor(Math.random() * map.length);
+					nO--;
+				}
+				else
+				{
+					try{
+						map[safeC(yCoord)][safeC(xCoord)].elevation = 0;
+					}
+					catch(error){
+						console.log(safeC(yCoord));
+					}
+					dir = Math.floor(Math.random()*4);
+					if(dir == 0){ yCoord++; }
+					else if(dir == 1){ xCoord++; }
+					else if(dir == 2){ yCoord--; }
+					else if(dir == 3){ xCoord--; }
+					oS--;
+				}
+			}
+		}
+		genOceans(10000, 5);
+		drawEntireMap();
+
+	</script>
+</body>
+</html>
