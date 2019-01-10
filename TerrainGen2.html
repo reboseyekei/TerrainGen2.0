@@ -83,41 +83,42 @@
 		}
 		function genOceans(oceanSize, numOceans)
 		{
-			debugger;
 			var oS = oceanSize;
 			var lastDir = 0;
 			var nO = numOceans;
 			var dir = 0;
-			var yCoord = Math.floor(Math.random() * map.length);
-			var	xCoord = Math.floor(Math.random() * map.length);
+			var yCoord = Math.floor(Math.random() * MAPSIZE);
+			var	xCoord = Math.floor(Math.random() * MAPSIZE);
 			while(oS > 0 && nO > 0)
 			{
 				if(oS == 1)
 				{
 					oS = oceanSize; //Ocean size is too small, go to new location to begin making ocean
-					yCoord = Math.floor(Math.random() * map.length);
-					xCoord = Math.floor(Math.random() * map.length);
+					yCoord = Math.floor(Math.random() * MAPSIZE);
+					xCoord = Math.floor(Math.random() * MAPSIZE);
 					nO--;
 				}
 				else
 				{
-					
+				try{
 					map[safeC(yCoord)][safeC(xCoord)].elevation = 0;
-					map[safeC(yCoord)][safeC(xCoord + 1)].elevation = 0;
-					map[safeC(yCoord)][safeC(xCoord + 2)].elevation = 0;
-					map[safeC(yCoord)][safeC(xCoord + 3)].elevation = 0;
+				}
+				catch(error){ debugger };
+					do{
 					dir = Math.floor(Math.random()*4);
-					
+					}while(lastDir == dir);
 					if(dir == 0){ yCoord++; }
 					else if(dir == 1){ xCoord++; }
 					else if(dir == 2){ yCoord--; }
 					else if(dir == 3){ xCoord--; }
 					lastDir = dir;
 					oS--;
+					yCoord = safeC(yCoord);
+					xCoord = safeC(xCoord);
 				}
 			}
 		}
-		genOceans(100000, 10);
+		genOceans(1000000, 1);
 		drawEntireMap();
 
 	</script>
