@@ -85,6 +85,7 @@
 		{
 			debugger;
 			var oS = oceanSize;
+			var lastDir = 0;
 			var nO = numOceans;
 			var dir = 0;
 			var yCoord = Math.floor(Math.random() * map.length);
@@ -100,22 +101,23 @@
 				}
 				else
 				{
-					try{
-						map[safeC(yCoord)][safeC(xCoord)].elevation = 0;
-					}
-					catch(error){
-						console.log(safeC(yCoord));
-					}
+					
+					map[safeC(yCoord)][safeC(xCoord)].elevation = 0;
+					map[safeC(yCoord)][safeC(xCoord + 1)].elevation = 0;
+					map[safeC(yCoord)][safeC(xCoord + 2)].elevation = 0;
+					map[safeC(yCoord)][safeC(xCoord + 3)].elevation = 0;
 					dir = Math.floor(Math.random()*4);
+					
 					if(dir == 0){ yCoord++; }
 					else if(dir == 1){ xCoord++; }
 					else if(dir == 2){ yCoord--; }
 					else if(dir == 3){ xCoord--; }
+					lastDir = dir;
 					oS--;
 				}
 			}
 		}
-		genOceans(10000, 5);
+		genOceans(100000, 10);
 		drawEntireMap();
 
 	</script>
