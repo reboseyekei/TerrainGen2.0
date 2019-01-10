@@ -120,7 +120,10 @@
 							}
 							dist = getDist(yC, xC, yDisp, xDisp);
 							console.log(CONTSIZE/(Math.random() * 2*(dist+1)));
-							map[safeC(yDisp)][safeC(xDisp)].elevation = CONTSIZE/(Math.random() * (dist+1)); /needs to be fixed
+							if(CONTSIZE - dist > CONTSIZE * Math.random())
+							{
+								map[safeC(yDisp)][safeC(xDisp)].elevation = Math.random();
+							}
 						}
 					}
 				}
