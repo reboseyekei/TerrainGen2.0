@@ -7,7 +7,7 @@
 	<script>
 		var c = document.getElementById("world");
 		var ctx = c.getContext("2d");
-		const MAPSIZE = 1000;
+		const MAPSIZE = 500;
 		var map = new Array(MAPSIZE);
 		const CONTSIZE = 100;
 		var points = 1;
@@ -18,7 +18,7 @@
 		function Tile()
 		{
 			this.type = 'w';
-			this.elevation = 0;
+			this.elevation = 1;
 		}
 		function Interface()
 		{
@@ -42,12 +42,12 @@
 		{
 			for(i = 0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
-					if(map[i][j].elevation <= 0.05)
+					if(map[i][j].elevation <= 0)
 					{
 						ctx.fillStyle = "blue";
 					}
 					else{
-						ctx.fillStyle = "black";	
+						ctx.fillStyle = "green";	
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -66,7 +66,7 @@
 		function safeC(a)
 		{
 			if(a >= MAPSIZE){ return a - MAPSIZE; }
-			if(a < 0){ return MAPSIZE - a; }
+			if(a < 0){ return MAPSIZE + a; }
 			return a;
 		}
 		function getDist(y1, x1, y2, x2)
@@ -81,53 +81,41 @@
 			}
 			return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
 		}
-		function elevationPoints(num)
+		function genOceans(oceanSize, numOceans)
 		{
-			var cores = new Array(num);
-			for(i = 0; i < num; i++){
-				cores[i] = new Array(2);
-				cores[i][0] = Math.floor(Math.random() * MAPSIZE);
-				cores[i][1] = Math.floor(Math.random() * MAPSIZE);
-				map[cores[i][0]][cores[i][1]].elevation = 1;
-			}
-			return cores;
-		}
-		var coreList = elevationPoints(1);
-		function elevationSpread(size, cores, coreX, coreY, lastDir){
-			var dist;
-			var yC, xC;
-			for(h = 0; h < coreList.length; h++)
+			debugger;
+			var oS = oceanSize;
+			var nO = numOceans;
+			var dir = 0;
+			var yCoord = Math.floor(Math.random() * map.length);
+			var	xCoord = Math.floor(Math.random() * map.length);
+			while(oS > 0 && nO > 0)
 			{
-				yC = coreList[h][0];
-				xC = coreList[h][1];
-				for(i = 0; i < CONTSIZE; i++){
-					j = Math.floor(Math.random() * 4);
-					console.log(j);
-						for(k = 0-i; k <= i; k++)
-						{
-							var xDisp, yDisp;
-							if(j == 0 || j == 1)  //top and bottom, xC changes
-							{
-								yDisp = safeC(yC + i);
-								xDisp = safeC(xC+k);
-								if(j == 1){ yDisp = safeC(yC - i); }
-							}
-							else
-							{
-								yDisp = safeC(yC + k);
-								xDisp = safeC(xC + i);
-								if(j == 3){ xDisp = safeC(xC - i); }
-							}
-							dist = getDist(yC, xC, yDisp, xDisp);
-							if(CONTSIZE - dist > CONTSIZE * Math.random())
-							{
-								map[safeC(yDisp)][safeC(xDisp)].elevation = Math.random();
-							}
-						}
+				if(oS == 1)
+				{
+					oS = oceanSize; //Ocean size is too small, go to new location to begin making ocean
+					yCoord = Math.floor(Math.random() * map.length);
+					xCoord = Math.floor(Math.random() * map.length);
+					nO--;
+				}
+				else
+				{
+					try{
+						map[safeC(yCoord)][safeC(xCoord)].elevation = 0;
 					}
+					catch(error){
+						console.log(safeC(yCoord));
+					}
+					dir = Math.floor(Math.random()*4);
+					if(dir == 0){ yCoord++; }
+					else if(dir == 1){ xCoord++; }
+					else if(dir == 2){ yCoord--; }
+					else if(dir == 3){ xCoord--; }
+					oS--;
+				}
 			}
 		}
-		elevationSpread(CONTSIZE, coreList.length, 0, 0, 0);
+		genOceans(10000, 5);
 		drawEntireMap();
 
 	</script>
