@@ -20,7 +20,7 @@
 		function Tile()
 		{
 			this.type = 'w';
-			this.elevation = 1;
+			this.elevation = 0;
 		}
 		function Interface()
 		{
@@ -48,8 +48,11 @@
 					{
 						ctx.fillStyle = "blue";
 					}
-					else{
+					else if(map[i][j].elevation < .9){
 						ctx.fillStyle = "green";	
+					}
+					else{
+						ctx.fillStyle = "black";
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -128,19 +131,19 @@
 				switch(randX){
 					case 1:
 						map[tilePointer[0] + 1][tilePointer[1]].elevation = elevationMount();
-						tilePointer = [tilePointer[0] + 1][tilepointer[1]]
+						tilePointer[0]++;
 						break;
 					case 2:
 						map[tilePointer[0]][tilePointer[1]].elevation = elevationMount();
-						tilePointer = [tilePointer[0]][tilePointer[1] + (1 * randY)]
+						tilePointer[1] += (1 * randY);
 						break;
 					case -1:
 						map[tilePointer[0] - 1][tilePointer[1]].elevation = elevationMount();
-						tilePointer = [tilePointer[0] - 1][tilePointer[1]]
+						tilePointer[0]--;
 						break;
 					case -2:
 						map[tilePointer[0] + 1][tilePointer[1]].elevation = elevationMount();
-						tilePointer = [tilePointer[0]][tilePointer[1] + (1 * randY)]
+						tilePointer[1] += (1 * randY);
 						break;
 				}
 			}
