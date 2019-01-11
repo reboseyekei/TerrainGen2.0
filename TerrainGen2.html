@@ -81,66 +81,67 @@
 			}
 			return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
 		}
-		function genLand(oceanSize)
+		function genLand()
 		{
-			var oS = oceanSize;
-			var lastDir = 0;
-			var bannedDir = Math.floor(Math.random() * 4);
-			var dir = 0;
-			var yCoord = Math.floor(Math.random() * MAPSIZE);
-			var	xCoord = Math.floor(Math.random() * MAPSIZE);
-			var arr = [];
-			var index = -1;
-			while(oS > 0 && index < arr.length)
+			var centerPoints = new Array(Math.floor(Math.random() * 4) + 2);
+			centerPoints[0] = [ Math.floor(Math.random() * MAPSIZE - 300) + 300, Math.floor(Math.random() * MAPSIZE - 300) + 300];
+			map[safeC(centerPoints[0][1])][safeC(centerPoints[0][1])].elevation = 1;
+			for(i=1; i < centerPoints.length; i++)
 			{
-				if(oS == 1)
+				centerPoints[i] = [];
+				centerPoints[i][0] = safeC(Math.floor(Math.random() * (10*centerPoints.length)) + (centerPoints[i-1][0] - 5*centerPoints.length));
+				centerPoints[i][1] = safeC(Math.floor(Math.random() * (10*centerPoints.length)) + (centerPoints[i-1][1] - 5*centerPoints.length));
+				map[safeC(centerPoints[i][0])][safeC(centerPoints[i][1])].elevation = 1;
+			}
+			var centerPoint = [0, 0];
+			for(j = 0; j < centerPoints.length; j++)
+			{
+				centerPoint[0] += centerPoints[j][0]/centerPoints.length;
+				centerPoint[1] += centerPoints[j][1]/centerPoints.length;
+			}
+			centerPoint[0] = safeC(Math.round(centerPoint[0]));
+			centerPoint[1] = safeC(Math.round(centerPoint[1]));
+			map[safeC(centerPoint[0])][safeC(centerPoint[1])].elevation = 1;
+			//Gen Mountains and Elevated Areas near central points
+			for(j = 0; j < 2; j++){
+				for(i = 1; i < centerPoints.length; i++)
 				{
-					if(++index < arr.length){
-						oS = oceanSize; //Ocean size is too small, go to new location to begin making ocean
-						yCoord = arr[index][1];
-						xCoord = arr[index][0];
-						if(bannedDir < 2){
-							bannedDir = (dir + 2);
+					var mSize = 10*centerPoints.length;
+					var banDir = Math.floor(Math.random() * 4);
+					if(j == 1){
+						banDir = -1;
+					}
+					var dir = 0;
+					var lastDir = -1;
+					var xC = Math.floor(Math.random() * (10*centerPoints.length)) + (centerPoints[i-1][1] - 5*centerPoints.length);
+					var yC = Math.floor(Math.random() * (10*centerPoints.length)) + (centerPoints[i-1][0] - 5*centerPoints.length);
+					while(mSize > 0)
+					{
+						do{
+							dir = Math.floor(Math.random() * 4);
+						}while(dir == banDir || dir == lastDir);
+						if(Math.random() > .3)
+						{
+							map[safeC(yC)][safeC(xC)].elevation = 1;
 						}
-						else {
-							bannedDir = (dir - 2);
+						if(dir == 0) 
+							yC++; 
+						if(dir == 1)
+							xC++;
+						if(dir == 2) 
+							yC--;
+						if(dir == 3)
+							xC--; 
+						if(j == 0){
+							if(dir < 2){lastDir = dir + 2; }
+							else{lastDir = dir - 2; }
 						}
-						oS = Math.floor(Math.random() * oceanSize);
+						mSize--;
 					}
-				}
-				else
-				{
-					if(index == -1){
-						arr.push([xCoord, yCoord]);
-						map[safeC(yCoord)][safeC(xCoord)].elevation = 1;
-					}
-					else if(map[safeC(yCoord)][safeC(xCoord)].elevation == 0){
-						map[safeC(yCoord)][safeC(xCoord)].elevation += .2;
-					}
-					do{
-						dir = Math.floor(Math.random()*4);
-					}while(dir == bannedDir);
-					if(dir == 0) 
-						yCoord++; 
-					if(dir == 1)
-						xCoord++;
-					if(dir == 2)
-						yCoord--;
-					if(dir == 3)
-						xCoord--; 
-					if(dir < 2){
-						lastDir = (dir + 2);
-					}
-					else {
-						lastDir = (dir - 2);
-					}
-					oS--;
-					yCoord = safeC(yCoord);
-					xCoord = safeC(xCoord);
 				}
 			}
 		}
-		genLand(100);
+		genLand();
 		drawEntireMap();
 
 	</script>
