@@ -18,7 +18,7 @@
 		function Tile()
 		{
 			this.type = 'w';
-			this.elevation = 1;
+			this.elevation = 0;
 		}
 		function Interface()
 		{
@@ -81,44 +81,66 @@
 			}
 			return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
 		}
-		function genOceans(oceanSize, numOceans)
+		function genLand(oceanSize)
 		{
 			var oS = oceanSize;
 			var lastDir = 0;
-			var nO = numOceans;
+			var bannedDir = Math.floor(Math.random() * 4);
 			var dir = 0;
 			var yCoord = Math.floor(Math.random() * MAPSIZE);
 			var	xCoord = Math.floor(Math.random() * MAPSIZE);
-			while(oS > 0 && nO > 0)
+			var arr = [];
+			var index = -1;
+			while(oS > 0 && index < arr.length)
 			{
 				if(oS == 1)
 				{
-					oS = oceanSize; //Ocean size is too small, go to new location to begin making ocean
-					yCoord = Math.floor(Math.random() * MAPSIZE);
-					xCoord = Math.floor(Math.random() * MAPSIZE);
-					nO--;
+					if(++index < arr.length){
+						oS = oceanSize; //Ocean size is too small, go to new location to begin making ocean
+						yCoord = arr[index][1];
+						xCoord = arr[index][0];
+						if(bannedDir < 2){
+							bannedDir = (dir + 2);
+						}
+						else {
+							bannedDir = (dir - 2);
+						}
+						oS = Math.floor(Math.random() * oceanSize);
+					}
 				}
 				else
 				{
-				try{
-					map[safeC(yCoord)][safeC(xCoord)].elevation = 0;
-				}
-				catch(error){ debugger };
+					if(index == -1){
+						arr.push([xCoord, yCoord]);
+						map[safeC(yCoord)][safeC(xCoord)].elevation = 1;
+					}
+					else if(map[safeC(yCoord)][safeC(xCoord)].elevation == 0){
+						map[safeC(yCoord)][safeC(xCoord)].elevation += .2;
+					}
 					do{
-					dir = Math.floor(Math.random()*4);
-					}while(lastDir == dir);
-					if(dir == 0){ yCoord++; }
-					else if(dir == 1){ xCoord++; }
-					else if(dir == 2){ yCoord--; }
-					else if(dir == 3){ xCoord--; }
-					lastDir = dir;
+						dir = Math.floor(Math.random()*4);
+					}while(dir == bannedDir);
+					if(dir == 0) 
+						yCoord++; 
+					if(dir == 1)
+						xCoord++;
+					if(dir == 2)
+						yCoord--;
+					if(dir == 3)
+						xCoord--; 
+					if(dir < 2){
+						lastDir = (dir + 2);
+					}
+					else {
+						lastDir = (dir - 2);
+					}
 					oS--;
 					yCoord = safeC(yCoord);
 					xCoord = safeC(xCoord);
 				}
 			}
 		}
-		genOceans(1000000, 1);
+		genLand(100);
 		drawEntireMap();
 
 	</script>
