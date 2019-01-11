@@ -90,7 +90,6 @@
 				cores[i] = new Array(2);
 				cores[i][0] = Math.floor(Math.random() * MAPSIZE);
 				cores[i][1] = Math.floor(Math.random() * MAPSIZE);
-				map[cores[i][0]][cores[i][1]].elevation = 1;
 			}
 			return cores;
 		}
@@ -125,7 +124,7 @@
 			for(i = 0; i < MOUNTSIZE; i++){
 				var randChange = Math.ceil(Math.random() * 3);
 				var randX = direX * Math.ceil(Math.random() * 2);
-				var randY = direY * Math.ceil(Math.random() * 2);
+				var randY = direY * Math.ceil(Math.random() * 1);
 				switch(randX){
 					case 1:
 						map[safeC(tilePointer[1] + randChange)][safeC(tilePointer[0])].elevation = elevationMount();
