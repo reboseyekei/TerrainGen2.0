@@ -11,7 +11,8 @@
 		var map = new Array(MAPSIZE);
 		const CONTSIZE = 100;
 		var points = 3;
-		const MOUNTSIZE = 40;
+		const MOUNTSIZE = 100;
+		const MOUNTDIR = 0;
 		var steepness = 0.2;
 		
 		
@@ -43,12 +44,15 @@
 		{
 			for(i = 0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
-					if(map[i][j].elevation >= 0)
+					if(map[i][j].elevation <= 0)
 					{
-						ctx.fillStyle = "green";
+						ctx.fillStyle = "blue";
+					}
+					else if(map[i][j].elevation < .9){
+						ctx.fillStyle = "green";	
 					}
 					else{
-						ctx.fillStyle = "blue";	
+						ctx.fillStyle = "black";
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -115,7 +119,7 @@
 		var cores = elevationPoints(points);
 
 		function mountGrow(coreNum, distance)
-		{	
+		{
 			var tilePointer = new Array(2);
 			tilePointer = [ cores[coreNum][0], cores[coreNum][1]];
 			var dir = 1;
@@ -123,23 +127,23 @@
 			if(distance < 0){ dir = -1; }
 			for(i = 0; i < MOUNTSIZE; i++){
 				var randX = dir * Math.ceil(Math.random() * 2);
-				var randY = -2*Math.round(Math.random() + 1);
+				var randY = -2*Math.round(Math.random()) + 1
 				switch(randX){
 					case 1:
 						map[tilePointer[0] + 1][tilePointer[1]].elevation = elevationMount();
-						tilePointer = tilePointer[0]++;
+						tilePointer[0]++;
 						break;
 					case 2:
 						map[tilePointer[0]][tilePointer[1]].elevation = elevationMount();
-						tilePointer = [tilePointer[1] + (1 * randY)];
+						tilePointer[1] += (1 * randY);
 						break;
 					case -1:
 						map[tilePointer[0] - 1][tilePointer[1]].elevation = elevationMount();
-						tilePointer = tilePointer[0]--;
+						tilePointer[0]--;
 						break;
 					case -2:
 						map[tilePointer[0] + 1][tilePointer[1]].elevation = elevationMount();
-						tilePointer = [tilePointer[1] + (1 * randY)];
+						tilePointer[1] += (1 * randY);
 						break;
 				}
 			}
