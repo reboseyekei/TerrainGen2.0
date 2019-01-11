@@ -12,7 +12,6 @@
 		const CONTSIZE = 100;
 		var points = 3;
 		const MOUNTSIZE = 40;
-		const MOUNTDIR = 0;
 		var steepness = 0.2;
 		
 		
@@ -20,7 +19,7 @@
 		function Tile()
 		{
 			this.type = 'w';
-			this.elevation = 1;
+			this.elevation = 0;
 		}
 		function Interface()
 		{
@@ -44,12 +43,12 @@
 		{
 			for(i = 0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
-					if(map[i][j].elevation <= 0)
+					if(map[i][j].elevation >= 0)
 					{
-						ctx.fillStyle = "blue";
+						ctx.fillStyle = "green";
 					}
 					else{
-						ctx.fillStyle = "green";	
+						ctx.fillStyle = "blue";	
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
