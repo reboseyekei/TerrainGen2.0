@@ -10,8 +10,8 @@
 		const MAPSIZE = 500;
 		var map = new Array(MAPSIZE);
 		const CONTSIZE = 100;
-		var points = 3;
-		const MOUNTSIZE = 200;
+		var points = 10;
+		const MOUNTSIZE = 100;
 		const MOUNTDIR = 0;
 		var steepness = 0.2;
 		
@@ -119,15 +119,16 @@
 			direY = 0.0;
 			console.log("HEY");
 			if(dirX > 0){ direX = 1; }
-			if(dirX < 0){ direX = -1; }
+			else{ direX = -1; }
 			if(dirY > 0){ direY = 1; }
-			if(dirY < 0){ direYe = -1; }
+			else{ direY = -1; }
 			for(i = 0; i < MOUNTSIZE; i++){
+				var randChange = Math.ceil(Math.random() * 3);
 				var randX = direX * Math.ceil(Math.random() * 2);
-				var randY = direY * Math.ceil(Math.random() * 1);
+				var randY = direY * Math.ceil(Math.random() * 2);
 				switch(randX){
 					case 1:
-						map[safeC(tilePointer[1] + 1)][safeC(tilePointer[0])].elevation = elevationMount();
+						map[safeC(tilePointer[1] + randChange)][safeC(tilePointer[0])].elevation = elevationMount();
 						tilePointer[0]++;
 						break;
 					case 2:
@@ -135,7 +136,7 @@
 						tilePointer[1] += randY;
 						break;
 					case -1:
-						map[safeC(tilePointer[1]-1)][safeC(tilePointer[0])].elevation = elevationMount();
+						map[safeC(tilePointer[1]- randChange)][safeC(tilePointer[0])].elevation = elevationMount();
 						tilePointer[0]--;
 						break;
 					case -2:
