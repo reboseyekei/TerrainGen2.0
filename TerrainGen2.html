@@ -46,8 +46,17 @@
 					{
 						ctx.fillStyle = "blue";
 					}
-					else{
+					else if(map[i][j].elevation < .4){
 						ctx.fillStyle = "green";	
+					}
+					else if(map[i][j].elevation < .6){
+						ctx.fillStyle = "olive";
+					}
+					else if(map[i][j].elevation < .8){
+						ctx.fillStyle = "grey";
+					}
+					else{
+						ctx.fillStyle = "white";
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -83,7 +92,7 @@
 		}
 		function genLand()
 		{
-			var centerPoints = new Array(Math.floor(Math.random() * 4) + 2);
+			var centerPoints = new Array(Math.floor(Math.random() * 8) + 2);
 			centerPoints[0] = [ Math.floor(Math.random() * MAPSIZE - 300) + 300, Math.floor(Math.random() * MAPSIZE - 300) + 300];
 			map[safeC(centerPoints[0][1])][safeC(centerPoints[0][1])].elevation = 1;
 			for(i=1; i < centerPoints.length; i++)
@@ -93,7 +102,7 @@
 				centerPoints[i][1] = safeC(Math.floor(Math.random() * (10*centerPoints.length)) + (centerPoints[i-1][1] - 5*centerPoints.length));
 				map[safeC(centerPoints[i][0])][safeC(centerPoints[i][1])].elevation = 1;
 			}
-			var centerPoint = [0, 0];
+			var centerPoint = [0, 0]; //x y
 			for(j = 0; j < centerPoints.length; j++)
 			{
 				centerPoint[0] += centerPoints[j][0]/centerPoints.length;
@@ -104,7 +113,7 @@
 			map[safeC(centerPoint[0])][safeC(centerPoint[1])].elevation = 1;
 			//Gen Mountains and Elevated Areas near central points
 			for(j = 0; j < 2; j++){
-				for(i = 1; i < centerPoints.length; i++)
+				for(i = 0; i < centerPoints.length; i++)
 				{
 					var mSize = 10*centerPoints.length;
 					var banDir = Math.floor(Math.random() * 4);
@@ -113,8 +122,8 @@
 					}
 					var dir = 0;
 					var lastDir = -1;
-					var xC = Math.floor(Math.random() * (10*centerPoints.length)) + (centerPoints[i-1][1] - 5*centerPoints.length);
-					var yC = Math.floor(Math.random() * (10*centerPoints.length)) + (centerPoints[i-1][0] - 5*centerPoints.length);
+					var xC = Math.floor(Math.random() * (10*centerPoints.length)) + (centerPoints[i][0] - 5*centerPoints.length);
+					var yC = Math.floor(Math.random() * (10*centerPoints.length)) + (centerPoints[i][1] - 5*centerPoints.length);
 					while(mSize > 0)
 					{
 						do{
@@ -122,7 +131,7 @@
 						}while(dir == banDir || dir == lastDir);
 						if(Math.random() > .3)
 						{
-							map[safeC(yC)][safeC(xC)].elevation = 1;
+							map[safeC(yC)][safeC(xC)].elevation = 2;
 						}
 						if(dir == 0) 
 							yC++; 
@@ -137,6 +146,48 @@
 							else{lastDir = dir - 2; }
 						}
 						mSize--;
+					}
+				}
+			}
+			//Fill in areas toward center of island
+			for(h = 0; h < centerPoints.length; h++)
+			{
+				for(i = centerPoints[h][1] - centerPoints.length*10; i < centerPoints[h][1] + centerPoints.length * 10; i++)
+				{
+					for(j = centerPoints[h][0] - centerPoints.length * 10; j < centerPoints[h][0] + centerPoints.length*10; j++)
+					{
+						if(map[safeC(i)][safeC(j)].elevation > 0 && Math.random() < 2*map[safeC(i)][safeC(j)].elevation )
+						{
+							if(safeC(i) < centerPoint[1]) //Above
+							{
+								if(map[safeC(i+1)][safeC(j)].elevation <= .8)
+								{
+									console.log("hi");
+									map[safeC(i+1)][safeC(j)].elevation = .2;
+								}
+							}
+							else if(safeC(i) > centerPoint[1])
+							{
+								if(map[safeC(i-1)][safeC(j)].elevation <= .8)
+								{
+									map[safeC(i-1)][safeC(j)].elevation = .2; console.log("hi");
+								}
+							}
+							if(safeC(j) < centerPoint[0]) //Left
+							{
+								if(map[safeC(i)][safeC(j+1)].elevation <= .8)
+								{
+									map[safeC(i)][safeC(j+1)].elevation = .2; console.log("hi");
+								}
+							}
+							else if(safeC(j) > centerPoint[0])
+							{
+								if(map[safeC(i)][safeC(j-1)].elevation <= .8)
+								{
+									map[safeC(i)][safeC(j-1)].elevation = .2; console.log("hi");	
+								}
+							}
+						}
 					}
 				}
 			}
