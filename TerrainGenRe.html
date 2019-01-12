@@ -10,7 +10,7 @@
 		const MAPSIZE = 1000;
 		var map = new Array(MAPSIZE);
 		const CONTSIZE = 100;
-		var points = 5;
+		var points = 3;
 		const MOUNTSIZE = 300;
 		const MOUNTDIR = 0;
 		var steepness = 0.4;
@@ -49,18 +49,29 @@
 				for(j = 0; j < MAPSIZE; j++){
 					var rgbGrass = (Math.floor((map[i][j].elevation * 200)));
 					var rgbBeach = 200 - (Math.floor((map[i][j].elevation * 100)));
-					if(map[i][j].elevation <= 0)
-					{
+					if(map[i][j].elevation <= 0){
 						ctx.fillStyle = "blue";
 					}
-					else if(map[i][j].elevation < .9 && map[i][j].elevation > .005){
-						ctx.fillStyle = "rgb("+ rgbGrass +","+ 200 +","+ rgbGrass +")";
+					else if(map[i][j].elevation < .3 && map[i][j].elevation > .15){
+						ctx.fillStyle = "rgb("+ 50 +","+ 200 +","+ 50 +")";
 					}
-					else if(map[i][j].elevation <= .005){
-						ctx.fillStyle = "rgb("+ rgbBeach +","+ 200 +","+ 100 +")";
+					else if(map[i][j].elevation <= .15 && map[i][j].elevation > .002){
+						ctx.fillStyle = "rgb("+ 50 +","+ 175 +","+ 50 +")";
+					}
+					else if(map[i][j].elevation <= .002){
+						ctx.fillStyle = "rgb("+ 200 +","+ 200 +","+ 100 +")";
+					}
+					else if(map[i][j].elevation >= .3 && map[i][j].elevation < 0.6){
+						ctx.fillStyle = "rgb(100, 200, 100)";
 					}	
-					else{
+					else if(map[i][j].elevation >= .6 && map[i][j].elevation < 0.8){
+						ctx.fillStyle = "rgb(150, 200, 150)";
+					}
+					else if(map[i][j].elevation >= .8 && map[i][j].elevation < 0.9){
 						ctx.fillStyle = "rgb(200, 200, 200)";
+					}
+					else{
+						ctx.fillStyle = "rgb(255, 255, 255)";
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -165,7 +176,7 @@
 
 		function landGrow()
 		{
-			for(r = 0; r < 200;r++){
+			for(r = 0; r < 100;r++){
 				for(y = 0; y < MAPSIZE; y++){
 					for(x = 0; x < MAPSIZE; x++){
 						var north = 0.0;
