@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<canvas id="world" width="1000" height="1000" ></canvas>
+</head>
+<body>
+	<script>
+		var c = document.getElementById("world");
+		var ctx = c.getContext("2d");
+		const MAPSIZE = 1000;
+		var map = new Array(MAPSIZE);
+		const CONTSIZE = 100;
+		var points = 20;
+		const MOUNTSIZE = 300;
+		const MOUNTDIR = 0;
+		var steepness = 0.4;
+		const multi = 0.05;
+		
+		
+		//Classes: -----------------
+		function Tile()
+		{
+			this.type = 'w';
+			this.elevation = 0;
+			this.checked = 0;
+		}
+		function Interface()
+		{
+			this.zoom = 0;
+			this.yView = 0;
+			this.xView = 0;
+		}
+		//End Classes--------------
+		
+		var pView = new Interface();
+		
+		for(i = 0; i < MAPSIZE; i++){
+			map[i] = new Array(MAPSIZE);
+			for(j = 0; j < MAPSIZE; j++){
+				map[i][j] = new Tile();
+			}
+		}
+		
+		
+		function drawEntireMap()
+		{
+			for(i = 0; i < MAPSIZE; i++){
+				for(j = 0; j < MAPSIZE; j++){
+					var rb = (Math.floor((map[i][j].elevation * 200)));
+					if(map[i][j].elevation <= 0)
+					{
+						ctx.fillStyle = "blue";
+					}
+					else if(map[i][j].elevation < .9){
+						ctx.fillStyle = "rgb("+ rb +","+ 200 +","+ rb +")";
+					}
+					else{
+						ctx.fillStyle = "rgb(200, 200, 200)";
+					}
+					ctx.fillRect(j*1, i*1, 1, 1);
+				}
+			}
+		}
+
+		{
+			var zoom = 20-pView.zoom;
+			for(i = pView.yView; i < pView.yView + 20; i++){
+				for(j = pView.xView; j < pView.xView + 20; j++){
+					ctx.fillStyle = "blue";
+					ctx.fillRect(j*zoom, i*zoom, 1*zoom, 1*zoom);
+				}
+			}
+		}
+
+		function safeC(a)
+		{
+			if(a >= MAPSIZE){ return a - MAPSIZE; }
+			if(a < 0){ return MAPSIZE + a; }
+			return a;
+		}
+
+		function getDir(x1, x2)
+		{
+			var dx = (x1 - x2);
+			return dx;
+		}
+		
+		function elevationPoints(num)
+		{
+			var cores = new Array(num);
+			for(i = 0; i < num; i++){
+				cores[i] = new Array(num);
+				cores[i] = new Array(2);
+				cores[i][0] = Math.floor(Math.random() * MAPSIZE);
+				cores[i][1] = Math.floor(Math.random() * MAPSIZE);
+			}
+			return cores;
+		}
+
+		function elevationMount()
+		{
+			var newElevation = 0;
+			newElevation = 1 - (Math.random() * steepness * 2);
+			return newElevation;
+		}
+
+		function elevationLand(x, y)
+		{
+			var newElevation = 0;
+			newElevation = map[x][y].elevation - (Math.random() * steepness);
+			return newElevation;
+		}
+
+		var cores = elevationPoints(points);
+
+		function directionMultiplier(distance)// type needs to be either 1 or 2
+		{
+			multiplier = (distance/MAPSIZE) * 4;
+			return multiplier;
+		}
+
+		function mountGrow(coreNum, dirX, dirY)
+		{
+			var tilePointer = new Array(2);
+			direX = 0.0;
+			direY = 0.0;
+			console.log("HEY");
+			if(dirX > 0){ direX = 1; }
+			else{ direX = -1; }
+			if(dirY > 0){ direY = 1; }
+			else{ direY = -1; }
+			for(o = 0; o < 10; o++){
+				tilePointer = [ cores[coreNum][0] + (o * 2), cores[coreNum][1] + (o * 2)];
+				for(i = 0; i < MOUNTSIZE; i++){
+					var randChange = Math.ceil(Math.random() * directionMultiplier(dirX));
+					var randX = direX * Math.ceil(Math.random() * 2);
+					var randY = direY * Math.ceil(Math.random() * directionMultiplier(dirY));
+					switch(randX){
+						case 1:
+						map[safeC(tilePointer[1] + randChange)][safeC(tilePointer[0])].elevation = elevationMount();
+						tilePointer[0]++;
+						break;
+						case 2:
+						map[safeC(tilePointer[1])][safeC(tilePointer[0] + randY)].elevation = elevationMount();
+						tilePointer[1] += randY;
+						break;
+						case -1:
+						map[safeC(tilePointer[1]- randChange)][safeC(tilePointer[0])].elevation = elevationMount();
+						tilePointer[0]--;
+						break;
+						case -2:
+						map[safeC(tilePointer[1])][safeC(tilePointer[0] + randY)].elevation = elevationMount();
+						tilePointer[1] += randY;
+						break;
+					}
+				}
+			}
+		}
+
+
+		function landGrow()
+		{
+			for(r = 0; r < 100;r++){
+				for(y = 0; y < MAPSIZE; y++){
+					for(x = 0; x < MAPSIZE; x++){
+						var north = 0.0;
+						var south = 0.0;
+						var west = 0.0;
+						var east = 0.0;
+						var northE = 0.0;
+						var northW = 0.0;
+						var southE = 0.0;
+						var southW = 0.0;
+						if(map[y][x].checked == 0){
+							north =  map[safeC(y + 1)][safeC(x)].elevation - (Math.random() * multi);
+							south =  map[safeC(y - 1)][safeC(x)].elevation - (Math.random() * multi);
+							west =  map[safeC(y)][safeC(x - 1)].elevation - (Math.random() * multi);
+							east =  map[safeC(y)][safeC(x + 1)].elevation - (Math.random() * multi);
+							northE = map[safeC(y + 1)][safeC(x + 1)].elevation - (Math.random() * multi);
+							northW = map[safeC(y + 1)][safeC(x - 1)].elevation - (Math.random() * multi);
+							southE = map[safeC(y - 1)][safeC(x + 1)].elevation - (Math.random() * multi);
+							southW = map[safeC(y - 1)][safeC(x - 1)].elevation - (Math.random() * multi);
+							if(north > south && north > east && north > west && north > northE && north > northW && north > southE && north > southW && north > 0){
+								map[y][x].elevation = north;
+								map[y][x].checked = 1;
+							}
+							if(south > north && south > east && south > west && south > northE && south > northW && south > southE && south > southW && south > 0){
+								map[y][x].elevation = south;
+								map[y][x].checked = 1;
+							}
+							if(west > south && west > east && west > north && west > northE && west > northW && west > southE && west > southW && west > 0){
+								map[y][x].elevation = west;
+							}
+							if(east > south && east > north && east > west && east > northE && east > northW && east > southE && east > southW && east > 0){
+								map[y][x].elevation = east;
+								map[y][x].checked = 1;
+							}
+							if(northE > south && northE > east && northE > west && northE > north && northE > northW && northE > southE && northE > southW && north > 0){
+								map[y][x].elevation = northE;
+								map[y][x].checked = 1;
+							}
+							if(northW > south && northW > east && northW > west && northW > north && northW > northE && northW > southE && northW > southW && north > 0){
+								map[y][x].elevation = northW;
+								map[y][x].checked = 1;
+							}
+							if(southE > south && southE > east && southE > west && southE > north && southE > northE && southE > northW && southE > southW && north > 0){
+								map[y][x].elevation = southE;
+								map[y][x].checked = 1;
+							}
+							if(southW > south && southW > east && southW > west && southW > north && southW > northE && southW > northW && southW > southE && north > 0){
+								map[y][x].elevation = southW;
+								map[y][x].checked = 1;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		function rangeGenerator()
+		{
+			var distanceX = 0.0	;
+			var distanceY = 0.0;
+			for(k = 0; k < points; k++){
+				if(k == (points - 1)){
+					distanceX = getDir(cores[k][0], cores[0][0]);
+					distanceY = getDir(cores[k][1], cores[0][1]);
+				}
+				else{
+					distanceX = getDir(cores[k][0], cores[k + 1][0]);
+					distanceY = getDir(cores[k][1], cores[k + 1][1]);
+				}
+				mountGrow(k, distanceX, distanceY);
+				console.log(k);
+			}
+			return console.log("APE SPOTTED");
+		}
+
+		rangeGenerator();
+		landGrow();
+		drawEntireMap();
+
+	</script>
+</body>
+</html>
