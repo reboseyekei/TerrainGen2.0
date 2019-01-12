@@ -7,13 +7,14 @@
 	<script>
 		var c = document.getElementById("world");
 		var ctx = c.getContext("2d");
-		const MAPSIZE = 500;
+		const MAPSIZE = 1000;
 		var map = new Array(MAPSIZE);
 		const CONTSIZE = 100;
 		var points = 15;
-		const MOUNTSIZE = 100;
+		const MOUNTSIZE = 200;
 		const MOUNTDIR = 0;
-		var steepness = 0.2;
+		var steepness = 0.4;
+		const multi = 0.1;
 		
 		
 		//Classes: -----------------
@@ -45,15 +46,16 @@
 		{
 			for(i = 0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
+					var rb = (Math.floor((map[i][j].elevation * 200)));
 					if(map[i][j].elevation <= 0)
 					{
 						ctx.fillStyle = "blue";
 					}
-					else if(map[i][j].elevation < .8){
-						ctx.fillStyle = "green";	
+					else if(map[i][j].elevation < .9){
+						ctx.fillStyle = "rgb("+ rb +","+ 200 +","+ rb +")";
 					}
 					else{
-						ctx.fillStyle = "grey";
+						ctx.fillStyle = "rgb(200, 200, 200)";
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -127,7 +129,7 @@
 			else{ direX = -1; }
 			if(dirY > 0){ direY = 1; }
 			else{ direY = -1; }
-			for(o = 0; o < 3; o++){
+			for(o = 0; o < 10; o++){
 				tilePointer = [ cores[coreNum][0] + (o * 2), cores[coreNum][1] + (o * 2)];
 				for(i = 0; i < MOUNTSIZE; i++){
 					var randChange = Math.ceil(Math.random() * directionMultiplier(dirX));
@@ -158,34 +160,35 @@
 
 		function landGrow()
 		{
-			for(r = 0; r < 100;r++){
+			for(r = 0; r < (MAPSIZE/20);r++){
 				for(y = 0; y < MAPSIZE; y++){
 					for(x = 0; x < MAPSIZE; x++){
-						var northE = 0.0;
-						var southE = 0.0;
+						var north = 0.0;
+						var south = 0.0;
+						var west = 0.0;
+						var east = 0.0;
 						if(map[y][x].checked == 0){
-							northE =  ((map[safeC(y + 1)][safeC(x)].elevation + map[safeC(y)][safeC(x + 1)].elevation)/2) - (Math.random() * 0.01);
-							northW =  ((map[safeC(y + 1)][safeC(x)].elevation + map[safeC(y)][safeC(x - 1)].elevation)/2) - (Math.random() * 0.01);
-							southW =  ((map[safeC(y - 1)][safeC(x)].elevation + map[safeC(y)][safeC(x - 1)].elevation)/2) - (Math.random() * 0.01);
-							southE =  ((map[safeC(y - 1)][safeC(x)].elevation + map[safeC(y)][safeC(x + 1)].elevation)/2) - (Math.random() * 0.01);
-							if(northE > southE && northE> southW && northE > northW && northE > 0){
+							north =  map[safeC(y + 1)][safeC(x)].elevation - (Math.random() * multi);
+							south =  map[safeC(y - 1)][safeC(x)].elevation - (Math.random() * multi);
+							west =  map[safeC(y)][safeC(x - 1)].elevation - (Math.random() * multi);
+							east =  map[safeC(y)][safeC(x + 1)].elevation - (Math.random() * multi);
+							if(north > south && north > east && north > west && north > 0){
 								console.log 
-								map[y][x].elevation = northE;
+								map[y][x].elevation = north;
 								map[y][x].checked = 1;
 							}
-							if(northW > southE && northW> southW && northW > northE && northW > 0){
-								console.log 
-								map[y][x].elevation = northW;
+							if(south > north && south> east && south > west && south > 0){
+								map[y][x].elevation = south;
 								map[y][x].checked = 1;
 							}
-							if(southE > northE && southE> southW && southE > northW && southE > 0){
+							if(west > north && west> south && west > east && west > 0){
 								console.log 
-								map[y][x].elevation = southE;
+								map[y][x].elevation = west;
 								map[y][x].checked = 1;
 							}
-							if(southW > northE && southW> southE && southE > northW && southW > 0){
+							if(east > north && east > south && east > west && east > 0){
 								console.log 
-								map[y][x].elevation = southW;
+								map[y][x].elevation = east;
 								map[y][x].checked = 1;
 							}
 						}
