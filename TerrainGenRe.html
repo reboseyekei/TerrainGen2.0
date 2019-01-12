@@ -10,7 +10,7 @@
 		const MAPSIZE = 500;
 		var map = new Array(MAPSIZE);
 		const CONTSIZE = 100;
-		var points = 10;
+		var points = 15;
 		const MOUNTSIZE = 100;
 		const MOUNTDIR = 0;
 		var steepness = 0.2;
@@ -21,6 +21,7 @@
 		{
 			this.type = 'w';
 			this.elevation = 0;
+			this.checked = 0;
 		}
 		function Interface()
 		{
@@ -48,11 +49,11 @@
 					{
 						ctx.fillStyle = "blue";
 					}
-					else if(map[i][j].elevation < .9){
+					else if(map[i][j].elevation < .8){
 						ctx.fillStyle = "green";	
 					}
 					else{
-						ctx.fillStyle = "black";
+						ctx.fillStyle = "grey";
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -100,7 +101,7 @@
 			newElevation = 1 - (Math.random() * steepness * 2);
 			return newElevation;
 		}
-						
+
 		function elevationLand(x, y)
 		{
 			var newElevation = 0;
@@ -110,10 +111,15 @@
 
 		var cores = elevationPoints(points);
 
+		function directionMultiplier(distance)// type needs to be either 1 or 2
+		{
+			multiplier = (distance/MAPSIZE) * 4;
+			return multiplier;
+		}
+
 		function mountGrow(coreNum, dirX, dirY)
 		{
 			var tilePointer = new Array(2);
-			tilePointer = [ cores[coreNum][0], cores[coreNum][1]];
 			direX = 0.0;
 			direY = 0.0;
 			console.log("HEY");
@@ -121,34 +127,76 @@
 			else{ direX = -1; }
 			if(dirY > 0){ direY = 1; }
 			else{ direY = -1; }
-			for(i = 0; i < MOUNTSIZE; i++){
-				var randChange = Math.ceil(Math.random() * 3);
-				var randX = direX * Math.ceil(Math.random() * 2);
-				var randY = direY * Math.ceil(Math.random() * 1);
-				switch(randX){
-					case 1:
+			for(o = 0; o < 3; o++){
+				tilePointer = [ cores[coreNum][0] + (o * 2), cores[coreNum][1] + (o * 2)];
+				for(i = 0; i < MOUNTSIZE; i++){
+					var randChange = Math.ceil(Math.random() * directionMultiplier(dirX));
+					var randX = direX * Math.ceil(Math.random() * 2);
+					var randY = direY * Math.ceil(Math.random() * directionMultiplier(dirY));
+					switch(randX){
+						case 1:
 						map[safeC(tilePointer[1] + randChange)][safeC(tilePointer[0])].elevation = elevationMount();
 						tilePointer[0]++;
 						break;
-					case 2:
+						case 2:
 						map[safeC(tilePointer[1])][safeC(tilePointer[0] + randY)].elevation = elevationMount();
 						tilePointer[1] += randY;
 						break;
-					case -1:
+						case -1:
 						map[safeC(tilePointer[1]- randChange)][safeC(tilePointer[0])].elevation = elevationMount();
 						tilePointer[0]--;
 						break;
-					case -2:
+						case -2:
 						map[safeC(tilePointer[1])][safeC(tilePointer[0] + randY)].elevation = elevationMount();
 						tilePointer[1] += randY;
 						break;
+					}
+				}
+			}
+		}
+
+
+		function landGrow()
+		{
+			for(r = 0; r < 100;r++){
+				for(y = 0; y < MAPSIZE; y++){
+					for(x = 0; x < MAPSIZE; x++){
+						var northE = 0.0;
+						var southE = 0.0;
+						if(map[y][x].checked == 0){
+							northE =  ((map[safeC(y + 1)][safeC(x)].elevation + map[safeC(y)][safeC(x + 1)].elevation)/2) - (Math.random() * 0.01);
+							northW =  ((map[safeC(y + 1)][safeC(x)].elevation + map[safeC(y)][safeC(x - 1)].elevation)/2) - (Math.random() * 0.01);
+							southW =  ((map[safeC(y - 1)][safeC(x)].elevation + map[safeC(y)][safeC(x - 1)].elevation)/2) - (Math.random() * 0.01);
+							southE =  ((map[safeC(y - 1)][safeC(x)].elevation + map[safeC(y)][safeC(x + 1)].elevation)/2) - (Math.random() * 0.01);
+							if(northE > southE && northE> southW && northE > northW && northE > 0){
+								console.log 
+								map[y][x].elevation = northE;
+								map[y][x].checked = 1;
+							}
+							if(northW > southE && northW> southW && northW > northE && northW > 0){
+								console.log 
+								map[y][x].elevation = northW;
+								map[y][x].checked = 1;
+							}
+							if(southE > northE && southE> southW && southE > northW && southE > 0){
+								console.log 
+								map[y][x].elevation = southE;
+								map[y][x].checked = 1;
+							}
+							if(southW > northE && southW> southE && southE > northW && southW > 0){
+								console.log 
+								map[y][x].elevation = southW;
+								map[y][x].checked = 1;
+							}
+						}
+					}
 				}
 			}
 		}
 
 		function rangeGenerator()
 		{
-			var distanceX = 0.0;
+			var distanceX = 0.0	;
 			var distanceY = 0.0;
 			for(k = 0; k < points; k++){
 				if(k == (points - 1)){
@@ -157,7 +205,7 @@
 				}
 				else{
 					distanceX = getDir(cores[k][0], cores[k + 1][0]);
-					distanceX = getDir(cores[k][1], cores[k + 1][1]);
+					distanceY = getDir(cores[k][1], cores[k + 1][1]);
 				}
 				mountGrow(k, distanceX, distanceY);
 				console.log(k);
@@ -166,6 +214,7 @@
 		}
 
 		rangeGenerator();
+		landGrow();
 		drawEntireMap();
 
 	</script>
