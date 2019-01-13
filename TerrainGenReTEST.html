@@ -14,7 +14,7 @@
 		const MOUNTSIZE = 300;
 		const MOUNTDIR = 0;
 		const STEEPNESS = 0.4;
-		const MULTI = 0.05;
+		const MULTI = 0.1;
 		
 		
 		//Classes: -----------------
@@ -46,16 +46,31 @@
 		{
 			for(i = 0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
-					var rb = (Math.floor((map[i][j].elevation * 200)));
-					if(map[i][j].elevation <= 0)
-					{
+					var rgbGrass = (Math.floor((map[i][j].elevation * 200)));
+					var rgbBeach = 200 - (Math.floor((map[i][j].elevation * 100)));
+					if(map[i][j].elevation <= 0){
 						ctx.fillStyle = "blue";
 					}
-					else if(map[i][j].elevation < .9){
-						ctx.fillStyle = "rgb("+ rb +","+ 200 +","+ rb +")";
+					else if(map[i][j].elevation < .3 && map[i][j].elevation > .15){
+						ctx.fillStyle = "rgb("+ 50 +","+ 200 +","+ 50 +")";
+					}
+					else if(map[i][j].elevation <= .15 && map[i][j].elevation > .01){
+						ctx.fillStyle = "rgb("+ 50 +","+ 175 +","+ 50 +")";
+					}
+					else if(map[i][j].elevation <= .01){
+						ctx.fillStyle = "rgb("+ 200 +","+ 200 +","+ 100 +")";
+					}
+					else if(map[i][j].elevation >= .3 && map[i][j].elevation < 0.6){
+						ctx.fillStyle = "rgb(100, 200, 100)";
+					}	
+					else if(map[i][j].elevation >= .6 && map[i][j].elevation < 0.8){
+						ctx.fillStyle = "rgb(150, 200, 150)";
+					}
+					else if(map[i][j].elevation >= .8 && map[i][j].elevation < 0.9){
+						ctx.fillStyle = "rgb(200, 200, 200)";
 					}
 					else{
-						ctx.fillStyle = "rgb(200, 200, 200)";
+						ctx.fillStyle = "rgb(255, 255, 255)";
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -128,7 +143,7 @@
 			else{ direX = -1; }
 			if(dirY > 0){ direY = 1; }
 			else{ direY = -1; }
-			for(o = 0; o < 10; o++){
+			for(o = 0; o < 4; o++){
 				tilePointer = [ cores[coreNum][0] + (o * 2), cores[coreNum][1] + (o * 2)];
 				for(i = 0; i < MOUNTSIZE; i++){
 					var randChange = Math.ceil(Math.random() * directionMultiplier(dirX));
@@ -161,37 +176,35 @@
 		{
 			var count = 0;
 			var y = 0;
+			var x = 0;
 			for(r = 0; r <= 1; r++){
 				if(r == 1){ y = MAPSIZE-1; }
 				while(y < MAPSIZE && y >= 0){
-					var x = 0;
+					x = 0;
 					if(r == 1){ x = MAPSIZE-1; }
 					while(x < MAPSIZE && x >= 0){
 						var dirs = [];
 						var max = 0;
 						var maxVal = 0;
-						if(map[y][x].checked == 0){
-							for(i = -1; i < 1; i++)
+						for(i = -1; i <= 1; i++)
+						{
+							for(j = -1; j <= 1; j++)
 							{
-								for(j = -1; j < 1; j++)
+								if(!(j == 0 && i == 0))
 								{
-									if(!(j == 0 && i == 0))
+									dirs[dirs.length] = map[safeC(y+i)][safeC(x+j)].elevation - Math.random()*MULTI;
+									if(dirs[dirs.length-1] > maxVal)
 									{
-										dirs[dirs.length] = map[safeC(y+i)][safeC(x+j)].elevation - Math.random()*MULTI;
-										if(dirs[dirs.length-1] > maxVal)
-										{
-											maxVal = dirs[dirs.length-1];
-											max = dirs.length-1;
-										}
+										maxVal = dirs[dirs.length-1];
+										max = dirs.length-1;
 									}
 								}
 							}
-							//0 = NW, 1 = N, 2 = NE, 3 = W, 4 = E, 5 = SW, 6 = S, 7 = SE
-							if(dirs[max] > 0){
-								map[y][x].elevation = dirs[max];
-								map[y][x].checked = 1;
-								console.log(count++);
-							}
+						}
+						//0 = NW, 1 = N, 2 = NE, 3 = W, 4 = E, 5 = SW, 6 = S, 7 = SE
+						if(dirs[max] > 0){
+							//if(dirs[max] < .8){ dirs[max] -= Math.random()*.05; }
+							map[y][x].elevation = dirs[max];
 						}
 						if(r == 0){ x++; }
 						else { x--; }
@@ -218,8 +231,51 @@
 				mountGrow(k, distanceX, distanceY);
 			}
 		}
+		function mountain(gmont, granges){
+		var mont = gmont;
+		var ranges = granges;
+		var ranX = Math.floor(Math.random() * map[0].length);
+		var ranY = Math.floor(Math.random() * map.length);
+		var dirY = Math.round(Math.random());
+		var dirX = Math.round(Math.random());
+		while(mont > 0 && ranges > 0){
+			do{
+				dirY = Math.round(Math.random());
+				dirX = Math.round(Math.random());
+				if(dirX > 0 && dirY > 0){
+					ranX++;
+					ranY++;
+				}
+				else if(dirX > 0){
+					ranX++;
+					ranY--;
+				}
+				else if(dirY > 0){
+					ranY++;
+					ranX--;
+				}
+				else {
+					ranY--;
+					ranX--;
+				}
+				ranY = safeC(ranY);
+				ranX = safeC(ranX);
+			} while(map[ranY][ranX].mountain == 1)
+			while(map[ranY][ranX].grass < 1 || mont == 1){
+				ranX = Math.floor(Math.random() * map[0].length);
+				ranY = Math.floor(Math.random() * map.length);
+				mont = gmont;
+				ranges--;
+			}
+			var chance = Math.round(Math.random() * 10);
+			if(chance < 8){
+				map[ranY][ranX].elevation = 1;
+				mont--;
+			}
+		}
+		}
 
-		rangeGenerator();
+		mountain(1000, 10);
 		landGrow();
 		drawEntireMap();
 
