@@ -232,50 +232,46 @@
 			}
 		}
 		function mountain(gmont, granges){
-		var mont = gmont;
-		var ranges = granges;
-		var ranX = Math.floor(Math.random() * map[0].length);
-		var ranY = Math.floor(Math.random() * map.length);
-		var dirY = Math.round(Math.random());
-		var dirX = Math.round(Math.random());
+			var mont = gmont;
+			var ranges = granges;
+			var dir = Math.floor(Math.random() * 4);
+			var lastDir = 0;
+			var ranY = Math.floor(Math.random() * MAPSIZE);
+			var ranX = Math.floor(Math.random() * MAPSIZE);
 		while(mont > 0 && ranges > 0){
-			do{
-				dirY = Math.round(Math.random());
-				dirX = Math.round(Math.random());
-				if(dirX > 0 && dirY > 0){
-					ranX++;
-					ranY++;
-				}
-				else if(dirX > 0){
-					ranX++;
-					ranY--;
-				}
-				else if(dirY > 0){
-					ranY++;
-					ranX--;
-				}
-				else {
-					ranY--;
-					ranX--;
-				}
-				ranY = safeC(ranY);
-				ranX = safeC(ranX);
-			} while(map[ranY][ranX].mountain == 1)
-			while(map[ranY][ranX].grass < 1 || mont == 1){
-				ranX = Math.floor(Math.random() * map[0].length);
-				ranY = Math.floor(Math.random() * map.length);
+			if(mont == 1)
+			{
+				ranY = Math.floor(Math.random() * MAPSIZE);
+				ranX = Math.floor(Math.random() * MAPSIZE);
 				mont = gmont;
 				ranges--;
 			}
+			do{
+				dir = Math.floor(Math.random() * 4);
+			} while(dir == lastDir)
+			if(dir == 0) 
+				ranY++; 
+			if(dir == 1)
+				ranX++;
+			if(dir == 2) 
+				ranY--;
+			if(dir == 3)
+				ranX--; 
+			if(dir < 2){
+				lastDir = dir + 2;
+			}
+			else {
+				lastDir = dir - 2;
+			}
 			var chance = Math.round(Math.random() * 10);
 			if(chance < 8){
-				map[ranY][ranX].elevation = 1;
+				map[safeC(ranY)][safeC(ranX)].elevation = .8;
 				mont--;
 			}
 		}
 		}
 
-		mountain(1000, 10);
+		mountain(10000, 1);
 		landGrow();
 		drawEntireMap();
 
