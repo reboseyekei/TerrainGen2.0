@@ -166,7 +166,7 @@
 					yCoord = safeC(yCoord);
 					xCoord = safeC(xCoord);
 					map[yCoord][xCoord].elevation = 0;
-					for(d = -4; d < 5; d++) { map[yCoord][safeC(xCoord+d)].elevation = 0; map[safeC(yCoord + d)][xCoord].elevation = 0; } //Place Water in cross shape to reduce number of small islands
+					map[yCoord][safeC(xCoord)].elevation = 0;
 					do{
 						dir = Math.floor(Math.random()*4);
 					}while(dir == lastDir);
@@ -208,11 +208,6 @@
 			}
 		}
 		genOceans(9500000, 1);
-		for(z = 2; z < 20; z+= 2){
-			cleanOcean(z);
-		}
-		cleanOcean(100);
-		cleanOcean(120);
 		drawEntireMap();
 
 	</script>
