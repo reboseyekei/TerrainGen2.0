@@ -17,7 +17,7 @@
 		function Tile()
 		{
 			this.elevation = .2;
-			this.checked = 0;
+			this.checked = -1;
 		}
 		function Interface()
 		{
@@ -166,7 +166,6 @@
 					yCoord = safeC(yCoord);
 					xCoord = safeC(xCoord);
 					map[yCoord][xCoord].elevation = 0;
-					map[yCoord][safeC(xCoord)].elevation = 0;
 					do{
 						dir = Math.floor(Math.random()*4);
 					}while(dir == lastDir);
@@ -191,7 +190,7 @@
 							for(k = 0-size; k <= size; k++){
 								if(map[safeC(i+l)][safeC(j+k)].elevation > 0){num++;}
 								if(map[safeC(i+k)][safeC(j+l)].elevation > 0){num++;}
-								run = num > Math.floor(size/40);
+								run = num > Math.floor(size/20);
 							}
 						}
 						if(!run){
@@ -207,7 +206,42 @@
 				}
 			}
 		}
+		function slapIslands(){
+			var ind = 0;
+			var counter = 0;
+			function slapIslandsInner(yC, xC, index, checking){
+				if(counter > 50){
+					return;
+				}
+				var y = safeC(yC);
+				var x = safeC(xC);
+				if(map[y][x].elevation > 0 && (map[y][x].checked == -1 || !checking)){
+					counter++;
+					if(checking){ map[y][x].checked = index; }
+					else { map[y][x].elevation = 0; }
+					slapIslandsInner(y-1, x, index, checking);
+					slapIslandsInner(y+1, x, index, checking);
+					slapIslandsInner(y, x+1, index, checking);
+					slapIslandsInner(y, x-1, index, checking);
+				}
+			}
+			for(i = 0; i < MAPSIZE; i++){
+				for(j = 0; j < MAPSIZE; j++){
+					if(map[i][j].elevation > 0 && map[i][j].checked == -1){
+						counter = 0;
+						slapIslandsInner(i, j, ind++, true);
+						if(counter < 50)
+						{
+							slapIslandsInner(i, j, ind++, false);
+						}
+					}
+				}
+			}
+			
+		}
 		genOceans(9500000, 1);
+		for(z = 2; z<18; z++){ cleanOcean(z); }
+		slapIslands();
 		drawEntireMap();
 
 	</script>
