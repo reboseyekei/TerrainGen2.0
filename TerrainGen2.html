@@ -19,7 +19,7 @@
 			this.elevation = .2;
 			this.checked = -1;
 		}
-		function Interface()
+		function varerface()
 		{
 			this.zoom = 0;
 			this.yView = 0;
@@ -27,7 +27,7 @@
 		}
 		//End Classes--------------
 		
-		var pView = new Interface();
+		var pView = new varerface();
 		
 		for(i = 0; i < MAPSIZE; i++){
 			map[i] = new Array(MAPSIZE);
@@ -144,6 +144,45 @@
 			}
 			return a;
 		}
+		function rivers(riverSize, numRivers) {
+			var rS = riverSize;
+			var nR = numRivers;
+			var dir = 0;
+			var lastDir = 0;
+			var bannedDir = Math.floor(Math.random() * 4);
+			var yC = Math.floor(Math.random()* MAPSIZE);
+			var xC = Math.floor(Math.random() * MAPSIZE);
+			while(rS > 0 && nR > 1) {
+				if(rS == 1 || map[yC][xC].elevation == 0){
+					rS = riverSize; //River size is too small, go to new location to begin making river		
+					yC = Math.floor(Math.random()*(MAPSIZE));
+					xC = Math.floor(Math.random()*(MAPSIZE));
+					nR--;
+				}
+				else{
+					map[safeC(yC)][safeC(xC)].elevation = 0;
+					do{
+						dir = Math.floor(Math.random() * 4);
+						rS--;
+					} while(dir == lastDir || dir == bannedDir)
+					if(dir == 0) 
+						yC++; 
+					if(dir == 1)
+						xC++;
+					if(dir == 2) 
+						yC--;
+					if(dir == 3)
+						xC--; 
+					rS--;
+					if(dir < 2){
+						lastDir = dir + 2;
+					}
+					else {
+						lastDir = dir - 2;
+					}
+				}
+			}
+		}
 		function genOceans(oceanSize, numOceans)
 		{
 			var oS = oceanSize;
@@ -218,6 +257,7 @@
 				var spot = new Array(2);
 				stack.push([yC, xC]);
 				while(stack.length > 0){
+					counter++;
 					spot = stack.pop();
 					spot[0] = safeC(spot[0]);
 					spot[1] = safeC(spot[1]);
@@ -225,25 +265,21 @@
 					else { map[spot[0]][spot[1]].elevation = 0; }
 					if(checkValidity(spot[0]+1, spot[1], checking)){
 						stack.push([spot[0]+1, spot[1]]);
-						counter++;
 						if(checking){ map[safeC(spot[0]+1)][safeC(spot[1])].checked = index; }
 						else { map[safeC(spot[0]+1)][safeC(spot[1])].elevation = 0; }
 					}
 					if(checkValidity(spot[0], spot[1]+1, checking)){
 						stack.push([spot[0], spot[1]+1]);
-						counter++;
 						if(checking){ map[safeC(spot[0])][safeC(spot[1]+1)].checked = index; }
 						else { map[safeC(spot[0])][safeC(spot[1]+1)].elevation = 0; }
 					}
 					if(checkValidity(spot[0]-1, spot[1], checking)){
 						stack.push([spot[0]-1, spot[1]]);
-						counter++;
 						if(checking){ map[safeC(spot[0]-1)][safeC(spot[1])].checked = index; }
 						else { map[safeC(spot[0]-1)][safeC(spot[1])].elevation = 0; }
 					}
 					if(checkValidity(spot[0], spot[1]-1, checking)){
 						stack.push([spot[0], spot[1]-1]);
-						counter++;
 						if(checking){ map[safeC(spot[0])][safeC(spot[1]-1)].checked = index; }
 						else { map[safeC(spot[0])][safeC(spot[1]-1)].elevation = 0; }
 					}
@@ -261,8 +297,9 @@
 				}
 			}				
 		}
-		genOceans(10000000, 1);
-		slapIslands(80);
+		genOceans(7000000, 1);
+		slapIslands(240000);
+		rivers(1000, 100);
 		drawEntireMap();
 
 	</script>
