@@ -47,6 +47,21 @@
 			}
 			return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
 		}
+		function genName(male){
+			var mBegs = ["Le", "Ke", "Je", "Be", "Me", "Ko", "Ye", "E", "Cy", "Ce", "Ci", "A"];
+			var mMids = ["k", "r", "ke", "re", "vin", "t", "s", "n"];
+			var mEnds = ["os", "ih", "o", "it", "en", "in", "de", "des", "re", "ro", "ov", "us", "on"];
+			
+			var fBegs = ["Ke", "Ti", "Di", "De", "Li", "Ki", "Ve", "Al", "Ma", "Ni", "Ari", "A", "E", "So"];
+			var fMids = ["r", "n", "c", "s", "r", "or", "ret", "ken"];
+			var fEnds = ["a", "i", "ei", "is", "ia", "a", "iev", "ana"];
+			if(male){
+				return "" + mBegs[Math.floor(Math.random() * mBegs.length)] + "" + mMids[Math.floor(Math.random() * mMids.length)] + "" + mEnds[Math.floor(Math.random() * mEnds.length)];
+			}
+			else{
+				return "" + fBegs[Math.floor(Math.random() * fBegs.length)] + "" + fMids[Math.floor(Math.random() * fMids.length)] + "" + fEnds[Math.floor(Math.random() * fEnds.length)];
+			}
+		}
 		function drawEntireMap()
 		{
 			var lastElev = -1;
@@ -143,45 +158,6 @@
 				return safeC(a+MAPSIZE);
 			}
 			return a;
-		}
-		function rivers(riverSize, numRivers) {
-			var rS = riverSize;
-			var nR = numRivers;
-			var dir = 0;
-			var lastDir = 0;
-			var bannedDir = Math.floor(Math.random() * 4);
-			var yC = Math.floor(Math.random()* MAPSIZE);
-			var xC = Math.floor(Math.random() * MAPSIZE);
-			while(rS > 0 && nR > 1) {
-				if(rS == 1 || map[yC][xC].elevation == 0){
-					rS = riverSize; //River size is too small, go to new location to begin making river		
-					yC = Math.floor(Math.random()*(MAPSIZE));
-					xC = Math.floor(Math.random()*(MAPSIZE));
-					nR--;
-				}
-				else{
-					map[safeC(yC)][safeC(xC)].elevation = 0;
-					do{
-						dir = Math.floor(Math.random() * 4);
-						rS--;
-					} while(dir == lastDir || dir == bannedDir)
-					if(dir == 0) 
-						yC++; 
-					if(dir == 1)
-						xC++;
-					if(dir == 2) 
-						yC--;
-					if(dir == 3)
-						xC--; 
-					rS--;
-					if(dir < 2){
-						lastDir = dir + 2;
-					}
-					else {
-						lastDir = dir - 2;
-					}
-				}
-			}
 		}
 		function genOceans(oceanSize, numOceans)
 		{
@@ -299,7 +275,6 @@
 		}
 		genOceans(7000000, 1);
 		slapIslands(240000);
-		rivers(1000, 100);
 		drawEntireMap();
 
 	</script>
