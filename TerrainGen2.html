@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<canvas id = "map" width="2000" height="2000" style = "border: 1px solid black;"></canvas>
+	<canvas id = "map" width="1440" height="720" style = "border: 1px solid black;"></canvas>
 </head>
 <body>
 	<script>
@@ -19,15 +19,8 @@
 			this.elevation = .2;
 			this.checked = -1;
 		}
-		function varerface()
-		{
-			this.zoom = 0;
-			this.yView = 0;
-			this.xView = 0;
-		}
 		//End Classes--------------
 		
-		var pView = new varerface();
 		
 		for(i = 0; i < MAPSIZE; i++){
 			map[i] = new Array(MAPSIZE);
@@ -62,8 +55,12 @@
 				return "" + fBegs[Math.floor(Math.random() * fBegs.length)] + "" + fMids[Math.floor(Math.random() * fMids.length)] + "" + fEnds[Math.floor(Math.random() * fEnds.length)];
 			}
 		}
+		
+		
 		function drawEntireMap()
 		{
+			c.width = MAPSIZE;
+			c.height = MAPSIZE;
 			var lastElev = -1;
 			var rgbGrass;
 			var rgbBeach;
@@ -102,44 +99,109 @@
 				}
 			}
 		}
+		var yView = 0;
+		var xView = 0;
+		var zoom = 16;
+		var drawDelta = true;
+		function drawMap()
+		{
+			ctx.clearRect(0, 0, 1440, 720);
+			for(i = 0; i < Math.floor(720/(20-zoom)); i++){
+				for(j = 0; j < Math.floor(1440/(20-zoom)); j++){
+					var yLook = safeC(i + yView);
+					var xLook = safeC(j + xView);
+					if(map[yLook][xLook].elevation <= 0){
+						ctx.fillStyle = "blue";
+					}
+					else { ctx.fillStyle = "green"; }
+					ctx.fillRect(Math.floor(j * (20-zoom)), Math.floor(i * (20-zoom)), (20-zoom), (20-zoom));
+				}
+			}
+		}
+		function mountain(gmont, granges){
+			var mont = gmont;
+			var ranges = granges;
+			var ranX = Math.floor(Math.random() * map[0].length);
+			var ranY = Math.floor(Math.random() * map.length);
+			var dirY = Math.round(Math.random());
+			var dirX = Math.round(Math.random());
+			while(mont > 0 && ranges > 0){
+				do{
+					dirY = Math.round(Math.random());
+					dirX = Math.round(Math.random());
+					if(dirX > 0 && dirY > 0){
+						ranX++;
+						ranY++;
+					}
+					else if(dirX > 0){
+						ranX++;
+						ranY--;
+					}
+					else if(dirY > 0){
+						ranY++;
+						ranX--;
+					}
+					else {
+						ranY--;
+						ranX--;
+					}
+					ranY = safeC(ranY);
+					ranX = safeC(ranX);
+				} while(map[ranY][ranX].elevation > 0)
+				while(map[ranY][ranX].elevation <= 0 || mont == 1){
+					ranX = Math.floor(Math.random() * MAPSIZE);
+					ranY = Math.floor(Math.random() * MAPSIZE);
+					mont = gmont;
+					ranges--;
+				}
+				var chance = Math.round(Math.random() * 10);
+				if(chance < 8){
+					map[ranY][ranX].elevation = .55 + Math.random() * .4;
+					mont--;
+				}
+			}
+		}
+		
 		function landGrow()
 		{
 			var count = 0;
 			var y = 0;
 			var x = 0;
-			for(r = 0; r <= 1; r++){
+			for(r = 0; r <= 1; r++){	
 				if(r == 1){ y = MAPSIZE-1; }
 				while(y < MAPSIZE && y >= 0){
 					x = 0;
 					if(r == 1){ x = MAPSIZE-1; }
 					while(x < MAPSIZE && x >= 0){
-						var dirs = [];
-						var max = 0;
-						var maxVal = 0;
-						for(i = -1; i <= 1; i++)
-						{
-							for(j = -1; j <= 1; j++)
+						if(map[y][x].elevation > MULTI){
+							var dirs = [];
+							var max = 0;
+							var maxVal = 0;
+							for(i = -1; i <= 1; i++)
 							{
-								if(!(j == 0 && i == 0))
+								for(j = -1; j <= 1; j++)
 								{
-									var change = 0;
-									if(map[safeC(y+i)][safeC(x+j)].elevation > 0){
-										dirs[dirs.length] = map[safeC(y+i)][safeC(x+j)].elevation;
-										if(dirs[dirs.length-1] > maxVal)
-										{
-											maxVal = dirs[dirs.length-1];
-											max = dirs.length-1;
+									if(!(j == 0 && i == 0))
+									{
+										var change = 0;
+										if(map[safeC(y+i)][safeC(x+j)].elevation > 0){
+											dirs[dirs.length] = map[safeC(y+i)][safeC(x+j)].elevation;
+											if(dirs[dirs.length-1] > maxVal)
+											{
+												maxVal = dirs[dirs.length-1];
+												max = dirs.length-1;
+											}
 										}
 									}
 								}
 							}
-						}
-						//0 = NW, 1 = N, 2 = NE, 3 = W, 4 = E, 5 = SW, 6 = S, 7 = SE
-						if(maxVal > 0){
-							var use = MULTI;
-							if(maxVal > .6){ use = MULTIH; }
-							else if(maxVal <= .15){ use = MULTIL; }
-							map[y][x].elevation = dirs[max] - Math.random() * use;
+							//0 = NW, 1 = N, 2 = NE, 3 = W, 4 = E, 5 = SW, 6 = S, 7 = SE
+							if(maxVal > 0){
+								var use = MULTI;
+								if(maxVal > .6){ use = MULTIH; }
+								else if(maxVal <= .15){ use = MULTIL; }
+								map[y][x].elevation = dirs[max] - Math.random() * use;
+							}
 						}
 						if(r == 0){ x++; }
 						else { x--; }
@@ -190,34 +252,6 @@
 					else { xCoord--; }
 					if(lastDir < 2){ lastDir = dir + 2} else { lastDir = dir - 2; } //Asign Last Dir
 					oS--;
-				}
-			}
-		}
-		function cleanOcean(size) {
-			if(size == 0) { return; }
-			var num = 0;
-			var run = true;
-			for(i = 0; i < MAPSIZE; i++) {
-				for(j = 0; j < MAPSIZE; j++) {
-					if(map[i][j].elevation > 0) {
-						num = 0;
-						for(l = 0-size; l <= size; l+= 2*size){
-							for(k = 0-size; k <= size; k++){
-								if(map[safeC(i+l)][safeC(j+k)].elevation > 0){num++;}
-								if(map[safeC(i+k)][safeC(j+l)].elevation > 0){num++;}
-								run = num > Math.floor(size/20);
-							}
-						}
-						if(!run){
-							for ( k = 0 - size; k < size; k++) {
-								for ( l = 0 - size; l < size; l++) {
-									map[safeC(i + k)][safeC(j + l)].elevation = 0;
-								}
-							}
-							j+= size-1;
-						}
-						else{ j+= Math.floor(size/2); }
-					}
 				}
 			}
 		}
@@ -273,9 +307,36 @@
 				}
 			}				
 		}
+		function mapV(event){
+			if(event.keyCode == 37){
+				xView--;
+				drawDelta = true;	
+			}
+			else if(event.keyCode == 38){
+				yView--;
+				drawDelta = true;
+			}
+			else if(event.keyCode == 39){
+				xView++;
+				drawDelta = true;
+			}
+			else if(event.keyCode == 40){
+				yView++;
+				drawDelta = true;
+			}
+		}
 		genOceans(7000000, 1);
 		slapIslands(240000);
+		mountain(1000, 300);
+		landGrow();
 		drawEntireMap();
+		for(i = 0; i < MAPSIZE; i++){ for(j = 0; j < MAPSIZE; j++){ if(map[i][j].elevation > 0){ yView = i; xView = j; i = MAPSIZE; j = i; }}}
+		setInterval(function(){
+			document.addEventListener('keydown', mapV);
+			if(drawDelta){
+				//drawMap();
+			}
+		}, 36);
 
 	</script>
 </body>
