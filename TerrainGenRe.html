@@ -177,8 +177,8 @@
 		function landGrow()
 		{
 			for(r = 0; r < 100;r++){
-				for(y = 0; y < MAPSIZE; y++){
-					for(x = 0; x < MAPSIZE; x++){
+				for(y = MAPSIZE-1; y >= 0; y--){
+					for(x = MAPSIZE-1; x >= 0; x--){
 						var north = 0.0;
 						var south = 0.0;
 						var west = 0.0;
@@ -220,7 +220,7 @@
 				}
 			}
 		}
-
+	
 		function rangeGenerator()
 		{
 			var distanceX = 0.0	;
