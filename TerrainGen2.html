@@ -2,8 +2,8 @@
 <html>
 <head>
 	<canvas id = "leftBar" width="125" height="720" style = "position: absolute; left: 5px; border: 1px solid black;"></canvas>
-	<canvas id = "map" width="840" height="720" style = "position: absolute; left: 135px; border: 1px solid black;"></canvas>
-	<canvas id = "rightBar" width="540" height="720" style = "position: absolute; left: 980px; border: 1px solid black;"></canvas>
+	<canvas id = "map" width="900" height="720" style = "position: absolute; left: 135px; border: 1px solid black;"></canvas>
+	<canvas id = "rightBar" width="520" height="720" style = "position: absolute; left: 1000px; border: 1px solid black;"></canvas>
 </head>
 <body>
 	<script>
@@ -18,8 +18,11 @@
 		//Classes: -----------------
 		function Tile()
 		{
+			this.heat = 1;
 			this.elevation = .1;
+			this.wetness = 0;
 			this.type = 'g';
+			this.id = -1;
 			this.checked = -1;
 			this.building = [];
 		}
@@ -42,6 +45,7 @@
 			map[i] = new Array(MAPSIZE);
 			for(j = 0; j < MAPSIZE; j++){
 				map[i][j] = new Tile();
+				map[i][j].heat = 2 - Math.abs(1000 - i)/500;
 			}
 		}
 		function getDist(y1, x1, y2, x2)
@@ -71,7 +75,40 @@
 				return "" + fBegs[Math.floor(Math.random() * fBegs.length)] + "" + fMids[Math.floor(Math.random() * fMids.length)] + "" + fEnds[Math.floor(Math.random() * fEnds.length)];
 			}
 		}
-		
+		function drawWetness(){
+			ctx.clearRect(0, 0, 840, 720);
+			c.width = MAPSIZE;
+			c.height = MAPSIZE;
+			var lastElev = -1;
+			var rgbGrass;
+			var rgbBeach;
+			for(i = 0; i < MAPSIZE; i++){
+				for(j = 0; j < MAPSIZE; j++){
+					if(map[i][j].wetness <= 0){
+						ctx.fillStyle = "white";
+					}
+					else if(map[i][j].wetness <= .05){
+						ctx.fillStyle = "tan";
+					}
+					else if(map[i][j].wetness <= .1){
+						ctx.fillStyle = "olive";
+					}
+					else if(map[i][j].wetness <= .5){
+						ctx.fillStyle = "lightgreen";
+					}
+					else if(map[i][j].wetness <= 1){
+						ctx.fillStyle = "green";
+					}
+					else if(map[i][j].wetness <= 5){
+						ctx.fillStyle = "purple";
+					}
+					else{
+						ctx.fillStyle = "blue";
+					}
+					ctx.fillRect(j*1, i*1, 1, 1);
+				}
+			}
+		}
 		function drawElevationMap()
 		{
 			ctx.clearRect(0, 0, 840, 720);
@@ -94,7 +131,7 @@
 						else if(map[i][j].elevation <= .1){
 							ctx.fillStyle = "lightgreen";
 						}
-						else if(map[i][j].elevation <= .2){
+						else if(map[i][j].elevation <= .25){
 							ctx.fillStyle = "green";
 						}
 						else if(map[i][j].elevation <= 0.4){
@@ -123,24 +160,21 @@
 			ctx.clearRect(0, 0, 840, 720);
 			c.width = MAPSIZE;
 			c.height = MAPSIZE;
-			var lastType = 'w';
-			var rgbGrass;
-			var rgbBeach;
 			for(i = 0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
-					if(map[i][j].type != lastType){
-						rgbGrass = (Math.floor((map[i][j].type * 200)));
-						rgbBeach = 200 - (Math.floor((map[i][j].type * 100)));
-						if(map[i][j].type == 'w' || map[i][j].type == 'r'){
-							ctx.fillStyle = "blue";
-						}
-						else if(map[i][j].type == 'g'){
-							ctx.fillStyle = "rgb("+ 50 +","+ 200 +","+ 50 +")";
-						}
-						else{
-							ctx.fillStyle = "rgb(255, 255, 255)";
-						}
-						lastType = map[i][j].type;
+					switch(map[i][j].type){
+						case 'w': //Water
+						case 'r': ctx.fillStyle = "blue"; break; //River
+						case 'g': ctx.fillStyle = "rgb("+ 50 +","+ 200 +","+ 50 +")"; break; //Grass
+						case 's': ctx.fillStyle = "lightgreen"; break; //Steppe (or Savanna)
+						case 'd': ctx.fillStyle = "tan"; break; //Desert
+						case 'h': ctx.fillStyle = "olive"; break; //low Hills
+						case 'm': ctx.fillStyle = "white"; break; //Mountains
+						case 'c': ctx.fillStyle = "tan"; break; //Coasts
+						case 'i': ctx.fillStyle = "green"; break; //hIghland
+						case 'l': ctx.fillStyle = "grey"; break; //high hiLls
+						case 'f': ctx.fillStyle = "darkgreen"; break; //Forest
+						default:  ctx.fillStyle = "red"; break; //Error
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -151,20 +185,58 @@
 		var zoom = 8;
 		var drawDelta = true;
 		var grid = false;
+		var view = 0;
 		function drawMap()
 		{
-			ctx.clearRect(0, 0, 840, 720);
+			ctx.clearRect(0, 0, 900, 720);
 			for(i = 0; i < Math.floor(720/(20-zoom)); i++){
-				for(j = 0; j < Math.floor(840/(20-zoom)); j++){
+				for(j = 0; j < Math.floor(900/(20-zoom)); j++){
 					var yLook = safeC(i + yView);
 					var xLook = safeC(j + xView);
-					if(map[yLook][xLook].type == 'w' || map[yLook][xLook].type == 'r'){
-						ctx.fillStyle = "blue";
-					}
-					else if(map[yLook][xLook].type == 'm'){
-						ctx.fillStyle = "white";
-					}
-					else { ctx.fillStyle = "green"; }
+						if(view == 0){
+							if(map[yLook][xLook].elevation <= 0){
+								ctx.fillStyle = "blue";
+							}
+							else if(map[yLook][xLook].elevation < .05){
+								ctx.fillStyle = "tan";
+							}
+							else if(map[yLook][xLook].elevation <= .1){
+								ctx.fillStyle = "lightgreen";
+							}
+							else if(map[yLook][xLook].elevation <= .25){
+								ctx.fillStyle = "green";
+							}
+							else if(map[yLook][xLook].elevation <= 0.4){
+								ctx.fillStyle = "darkgreen";
+							}	
+							else if(map[yLook][xLook].elevation <= 0.6){
+								ctx.fillStyle = "olive";
+							}
+							else if(map[yLook][xLook].elevation <= .8){
+								ctx.fillStyle = "black";
+							}
+							else if(map[yLook][xLook].elevation <= 0.9){
+								ctx.fillStyle = "grey";
+							}
+							else{
+								ctx.fillStyle = "rgb(255, 255, 255)";
+							}
+						}	
+						else if(view == 1){
+							switch(map[i][j].type){
+							case 'w':
+							case 'r': ctx.fillStyle = "blue"; break;
+							case 'g': ctx.fillStyle = "rgb("+ 50 +","+ 200 +","+ 50 +")"; break;
+							case 's': ctx.fillStyle = "lightgreen"; break;
+							case 'd': ctx.fillStyle = "tan"; break;
+							case 'h': ctx.fillStyle = "olive"; break;
+							case 'm': ctx.fillStyle = "white"; break;
+							case 'c': ctx.fillStyle = "tan"; break;
+							case 'i': ctx.fillStyle = "green"; break;
+							case 'f': ctx.fillStyle = "darkgreen"; break;
+							default:  ctx.fillStyle = "red"; break;
+						}
+						}
 					ctx.fillRect(Math.floor(j * (20-zoom)), Math.floor(i * (20-zoom)), (20-zoom), (20-zoom));
 					if(grid){
 						if(map[yLook][xLook].type == 'g' && zoom < 12){
@@ -179,11 +251,66 @@
 		function genWorld()
 		{
 			genOceans(7000000, 1);
-			lands = slapIslands(15000);
+			lands = slap(20000, 'g', 'w', -1, 0);
 			mountain(5000, 125);
 			//mountain(50, 300);
 			elevSpread();
-			//rivers();
+			currents();
+			rivers();
+			for(i=0; i < MAPSIZE; i++){
+				for(j = 0; j < MAPSIZE; j++){
+					if(map[i][j].elevation > 0){
+						if(map[i][j].type == 'g' && map[i][j].elevation < .6 && map[i][j].wetness == 0 && map[i][j].heat > Math.random()){
+							map[i][j].type = 'd';
+						}
+						else if(map[i][j].wetness < .1){
+							map[i][j].type = 's';
+						}
+						if(map[i][j].elevation > .9){
+							map[i][j].type = 'm';
+						}
+						if(map[i][j].elevation >= .8 && map[i][j].type != 'm'){
+							map[i][j].type = 'l';
+						}
+						else if(map[i][j].elevation >= .6){
+							map[i][j].type = 'h';
+						}
+						if(map[i][j].elevation < .05){
+							map[i][j].type = 'c';
+						}
+						if(map[i][j].type == 'g' && map[i][j].elevation > .135){
+							map[i][j].type = 'i';
+						}
+						var chance = .05;
+						var dNum = 0;
+						if(map[i][j].type == 'd' || map[i][j].type == 'm'){ chance = 0; }
+						for(a = -1; a < 2; a++){
+							for(b = -1; b < 2; b++){
+								if(map[safeC(i+a)][safeC(j+b)].type == 'd'){
+									dNum++;
+								}
+								if(map[i][j].type == 'g' || map[i][j].type == 'i' || (map[i][j].type == 'h' && map[i][j].wetness > .1)){
+									chance += .005;
+									if(map[safeC(i+a)][safeC(j+b)].type == 'r'){
+										chance += .1;
+									}
+									if(map[safeC(i+a)][safeC(j+b)].type == 'f'){
+										chance += .125;
+									}
+								}
+							}
+						}
+						if(chance > Math.random())
+						{
+							map[i][j].type = 'f';
+						}
+						if(dNum >= 4 && (map[i][j].type == 's' || map[i][j].type == 'f')){
+							map[i][j].type = 'd';
+						}
+					}
+				}
+			}
+			slap(500, 'd', 's', 2, 2);
 		}
 		function mountain(rSize, rNum){
 			var yC = Math.floor(Math.random() * MAPSIZE);
@@ -261,27 +388,31 @@
 										if(map[safeC(i+a)][safeC(j+b)].elevation > max){ max = map[safeC(i+a)][safeC(j+b)].elevation; }
 										add += map[safeC(i+a)][safeC(j+b)].elevation/8;
 									}
-									if(add < 0){ map[i][j].elevation/=2; }
-									else {
+									if(add <= 0){ map[i][j].elevation/=2; }
+									else if(map[i][j].elevation < max || map[i][j].elevation < .6){
 										if(max > .9){
-											if(map[i][j].elevation < max){
-												map[i][j].elevation = max * (.65 + .3*Math.random());
-											}
+											map[i][j].elevation = max * (.65 + .3*Math.random());
+										}
+										else if(max > .8){
+											map[i][j].elevation = max * (.92 + Math.random()/20);
 										}
 										else if(max > .7){
-											map[i][j].elevation = max - Math.random()/6;
+											map[i][j].elevation = max * (.7 + Math.random()/10);
 										}
 										else if(max > .6){
-											map[i][j].elevation = max - Math.random()/10;
+											map[i][j].elevation = max * (.9 + Math.random()/10);
 										}
 										else if(max > .4){
-											map[i][j].elevation = max + .01 - Math.random()/10;
+											map[i][j].elevation = max * (.5 + Math.round(Math.random()*20)/40);
 										}
-										else if(max > .2){
-											map[i][j].elevation = max * (.6 + .45*Math.random());
+										else if(max > .25){
+											map[i][j].elevation = max * (.5 + Math.round(Math.random()*20)/36);
 										}
-										else{
-											map[i][j].elevation = add * (.7 + .5*Math.random());
+										else if(max >= .1){
+											map[i][j].elevation = max * (.51 + Math.round(Math.random()*20)/36);
+										}
+										else {
+											map[i][j].elevation = max;
 										}
 									}
 								}
@@ -293,41 +424,85 @@
 				}
 			}
 		}
+		function currents(){
+			function makeCurrent(yC, xC){
+				var lastDir = -1;
+				var bannedDir = Math.floor(Math.random()*4);
+				var dir = -1;
+				var water = 75;
+				var y = safeC(yC);
+				var x = safeC(xC);
+				var cS = 0;
+				var limit = 200;
+				while(cS < limit && water > 0){
+					y = safeC(y);
+					x = safeC(x);
+					var z = 0;
+						if(map[safeC(y+z)][x].type == 'w'){
+							water+=.75;
+						}
+						else{
+							water -= 1.5*map[safeC(y+z)][x].elevation;
+							map[safeC(y+z)][x].wetness += map[safeC(y+z)][x].elevation/8;
+							map[safeC(y+z)][x].heat += .01;
+							limit++;
+						}
+					
+					do{
+						dir = Math.floor(Math.random()*4);
+					}while(dir == lastDir || dir == bannedDir);
+					if(dir == 0){ y--; lastDir = 2;}
+					else if(dir == 1){ x++; lastDir = 3;}
+					else if(dir == 2){ y++; lastDir = 0;}
+					else if(dir == 3){ x--;  lastDir = 1;}
+					cS++;
+				}
+			}
+			for(var i = 0; i < MAPSIZE; i+=2){
+				for(var j = 0; j < MAPSIZE; j+=2){
+					if(map[i][j].type == 'w'){
+						makeCurrent(i, j);
+					}
+				}
+			}
+		}
 		function rivers(){
-			var counter = 0;
+			var id = 0;
 			function makeRiver(yC, xC){
 				var spot = new Array(2);
+				var interval = Math.ceil(Math.random() * 100);
+				var dirToSea = -1;
 				var stack = [];
 				var stop = false;
 				stack.push([yC, xC]);
 				var lastDir = -1;
-				while(stack.length > 0 && !stop && counter < 500){
-					counter++;
+				var bannedDir = -1;
+				var rS = 0;
+				while(stack.length > 0 && !stop){
 					spot = stack.pop();
 					var y = safeC(spot[0]);
 					var x = safeC(spot[1]);
-					yView = y - 10;
-					xView = x - 10;
 					if(map[y][x].type != 'w'){
-						var min = map[y][x].elevation * 1.1;
-						if(counter > 0){
+						var min = map[y][x].elevation + .2;
+						if(rS > 0){
 							map[y][x].type = 'r';
+							map[y][x].id = id;
 							map[y][x].elevation = 0
 						}
 						var minDir = -1;
-						if(map[safeC(y - 1)][x].elevation < min && lastDir != 0){
+						if(map[safeC(y - 1)][x].elevation < min && lastDir != 0 && bannedDir != 0 && map[safeC(y - 1)][x].id != id){
 							min = map[safeC(y - 1)][x].elevation;
 							minDir = 0;
 						}
-						if(map[y][safeC(1+x)].elevation < min && lastDir != 1){
+						if(map[y][safeC(1+x)].elevation < min && lastDir != 1 && bannedDir != 1 && map[y][safeC(1+x)].id != id){
 							min = map[y][safeC(1+x)].elevation;
 							minDir = 1;
 						}
-						if(map[safeC(y + 1)][x].elevation < min && lastDir != 2){
+						if(map[safeC(y + 1)][x].elevation < min && lastDir != 2 && bannedDir != 2 && map[safeC(y + 1)][x].id != id){
 							min = map[safeC(y + 1)][x].elevation;
 							minDir = 2;
 						}
-						if(map[y][safeC(x-1)].elevation < min && lastDir != 3){
+						if(map[y][safeC(x-1)].elevation < min && lastDir != 3 && bannedDir != 3 && map[y][safeC(x-1)].id != id){
 							min = map[y][safeC(x-1)].elevation;
 							minDir = 3;
 						}
@@ -335,20 +510,42 @@
 							if(minDir == 0){ stack.push([y-1, x]); }
 							else if(minDir == 1){ stack.push([y, x+1]); }
 							else if(minDir == 2){ stack.push([y+1, x]); }
-							else { stack.push([y, x-1]); }
+							else if(minDir == 3){ stack.push([y, x-1]); }
+							else{ stop = true; }
 							if(minDir < 2){ lastDir = minDir+2;} else { lastDir = minDir -2; }
+							if(rS%interval == 0){
+								var counting = 0;
+								while(dirToSea == -1 && counting < 1000){
+									if(map[safeC(y-counting)][x].type == 'w')
+										dirToSea = 0;
+									else if(map[y][safeC(x+counting)].type == 'w')
+										dirToSea = 1;
+									else if(map[safeC(y+counting)][x].type == 'w')
+										dirToSea = 2;
+									else if(map[y][safeC(x-counting)].type == 'w')
+										dirToSea = 3;
+									counting++;
+								}
+								if(counting == 1000){
+									stop = true;
+								}
+								else{
+									if(dirToSea < 2){ bannedDir = dirToSea + 2; }
+									else { bannedDir = dirToSea - 2; }
+								}
+							}
 						}
 						else { stop = true; }
 					}
 					else { stop = true; }
+					rS++;
 				}
 			}
-			for(i = 0; i < MAPSIZE; i++){
-				for(j = 0; j < MAPSIZE; j++){
-					if(map[i][safeC(j)].elevation > .45 && map[i][safeC(j-1)].elevation < .452){
-						counter = 0;
+			for(var i = 0; i < MAPSIZE; i+=60){
+				for(var j = 0; j < MAPSIZE; j+=60){
+					if(map[i][j].elevation < .6 && map[i][j].wetness >= .35){
 						makeRiver(i, j);
-						//console.log(counter);
+						id++;
 					}
 				}
 			}
@@ -385,6 +582,7 @@
 					yCoord = safeC(yCoord);
 					xCoord = safeC(xCoord);
 					map[yCoord][xCoord].type = 'w';
+					map[yCoord][xCoord].wetness = 0;
 					map[yCoord][xCoord].elevation = -1;
 					do{
 						dir = Math.floor(Math.random()*4);
@@ -398,16 +596,16 @@
 				}
 			}
 		}
-		function slapIslands(size){
+		function slap(size, typeDetect, typeMake, elevChange, nind){
 			var ind = 0;
 			var counter = 0;
 			var stack = [];
 			var continents = [];
 			function checkValidity(y, x, checking){
 				var a = map[safeC(y)][safeC(x)];
-				return (a.checked == -1 || !checking) && a.type == 'g';
+				return (a.checked != nind || !checking) && a.type == typeDetect;
 			}
-			function slapIslandsInner(yC, xC, index, checking){
+			function slapInner(yC, xC, checking){
 				var spot = new Array(2);
 				stack.push([yC, xC]);
 				while(stack.length > 0){
@@ -415,27 +613,25 @@
 					spot = stack.pop();
 					y = safeC(spot[0]);
 					x = safeC(spot[1]);
-					if(checking){ map[y][x].checked = index; }
-					else { map[y][x].type = 'w'; map[y][x].elevation = -1;}
+					if(checking){ map[y][x].checked = nind; }
+					else { 
+						map[y][x].type = typeMake; 
+						if(elevChange != 2){
+							map[y][x].elevation = elevChange;
+						}
+					}
+					
 					if(checkValidity(y+1, x, checking)){
 						stack.push([y+1, x]);
-						if(checking){ map[safeC(y+1)][safeC(x)].checked = index; }
-						else { map[safeC(y+1)][safeC(x)].type = 'w'; map[y][x].elevation = -1;}
 					}
 					if(checkValidity(y, x+1, checking)){
 						stack.push([y, x+1]);
-						if(checking){ map[safeC(y)][safeC(x+1)].checked = index; }
-						else { map[safeC(y)][safeC(x+1)].type = 'w';map[y][x].elevation = -1; }
 					}
 					if(checkValidity(y-1, x, checking)){
 						stack.push([y-1, x]);
-						if(checking){ map[safeC(y-1)][safeC(x)].checked = index; }
-						else { map[safeC(y-1)][safeC(x)].type = 'w'; map[y][x].elevation = -1;}
 					}
 					if(checkValidity(y, x-1, checking)){
 						stack.push([y, x-1]);
-						if(checking){ map[safeC(y)][safeC(x-1)].checked = index; }
-						else { map[safeC(y)][safeC(x-1)].type = 'w'; map[y][x].elevation = -1;}
 					}
 				}
 			}
@@ -443,10 +639,11 @@
 				for(j = 0; j < MAPSIZE; j++){
 					if(checkValidity(i, j, true)){
 						counter = 0;
-						slapIslandsInner(i, j, ind++, true);
+						slapInner(i, j, true);
+						ind++;
 						if(counter < size){
 							ind--;
-							slapIslandsInner(i, j, ind, false);
+							slapInner(i, j, false);
 						}
 						else{
 							continents[ind] = counter;
@@ -477,11 +674,11 @@
 		}
 		
 		genWorld();
-		//drawEntireMap();
-		drawElevationMap();
+		drawEntireMap();
+		//drawElevationMap();
 		for(i = 0; i < MAPSIZE; i++){ for(j = 0; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ yView = i; xView = j; i = MAPSIZE; j = i; }}}
 		setInterval(function(){
-			document.addEventListener('keydown', mapV);
+			//document.addEventListener('keydown', mapV);
 			if(drawDelta){
 				//drawMap();
 			}
