@@ -2,18 +2,35 @@
 <html>
 <head>
 	<canvas id = "leftBar" width="125" height="720" style = "position: absolute; left: 5px; border: 1px solid black;"></canvas>
-	<canvas id = "map" width="900" height="720" style = "position: absolute; left: 135px; border: 1px solid black;"></canvas>
-	<canvas id = "rightBar" width="520" height="720" style = "position: absolute; left: 1000px; border: 1px solid black;"></canvas>
+	<canvas id = "map" width="2000" height="2000" style = "position: absolute; left: 135px; border: 1px solid black;"></canvas>
+	<canvas id = "rightBar" width="520" height="720" style = "position: absolute; left: 1038px; border: 1px solid black;"></canvas>
+	<div id = "test" min-width = "100%"></div> 
 </head>
 <body>
 	<script>
+		document.body.style.webkitTransform = 'scale(1)'; 
 		var c = document.getElementById("map");
+		c.style.height = "2000px";
+		c.style.width = "2000px";
+		var devZoom = window.devicePixelRatio/(window.outerWidth/window.innerWidth);
+		var scale = (screen.width * devZoom/1920) * (screen.height * devZoom/1080);
+		c.width *= scale;
+		c.height *= scale;
 		var ctx = c.getContext("2d");
+		ctx.scale(scale, scale);
+		
+		function setMapDSize(w, h)
+		{
+			c.style.width = "" + w +"px";
+			c.style.height = "" + h +"px";
+			
+			c.width = w * scale;
+			c.height = h * scale;
+			ctx.scale(scale, scale);
+		}
+		
 		const MAPSIZE = 2000;
 		var map = new Array(MAPSIZE);
-		const MULTIH = .2;
-		const MULTI = .2;
-		const MULTIL = .08;
 		
 		//Classes: -----------------
 		function Tile()
@@ -157,9 +174,7 @@
 		}
 		function drawEntireMap()
 		{
-			ctx.clearRect(0, 0, 840, 720);
-			c.width = MAPSIZE;
-			c.height = MAPSIZE;
+			ctx.clearRect(0, 0, MAPSIZE, MAPSIZE);
 			for(i = 0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
 					switch(map[i][j].type){
@@ -189,6 +204,7 @@
 		function drawMap()
 		{
 			ctx.clearRect(0, 0, 900, 720);
+			setMapDSize(900, 720);
 			for(i = 0; i < Math.floor(720/(20-zoom)); i++){
 				for(j = 0; j < Math.floor(900/(20-zoom)); j++){
 					var yLook = safeC(i + yView);
@@ -269,7 +285,7 @@
 						if(map[i][j].elevation > .9){
 							map[i][j].type = 'm';
 						}
-						if(map[i][j].elevation >= .8 && map[i][j].type != 'm'){
+						else if(map[i][j].elevation >= .8){
 							map[i][j].type = 'l';
 						}
 						else if(map[i][j].elevation >= .6){
@@ -674,13 +690,13 @@
 		}
 		
 		genWorld();
-		drawEntireMap();
+		//drawEntireMap();
 		//drawElevationMap();
 		for(i = 0; i < MAPSIZE; i++){ for(j = 0; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ yView = i; xView = j; i = MAPSIZE; j = i; }}}
 		setInterval(function(){
-			//document.addEventListener('keydown', mapV);
+			document.addEventListener('keydown', mapV);
 			if(drawDelta){
-				//drawMap();
+				drawMap();
 			}
 		}, 36);
 
