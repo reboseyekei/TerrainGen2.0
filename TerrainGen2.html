@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<canvas id = "leftBar" width="125" height="720" style = "position: absolute; left: 5px; border: 1px solid black;"></canvas>
-	<canvas id = "map" width="2000" height="2000" style = "position: absolute; left: 135px; border: 1px solid black;"></canvas>
-	<canvas id = "rightBar" width="520" height="720" style = "position: absolute; left: 1038px; border: 1px solid black;"></canvas>
+	<canvas id = "leftBar" width="125" height="720" style = "position: absolute; left: 1px; border: 1px solid black;"></canvas>
+	<canvas id = "map" width="2000" height="2000" style = "position: absolute; left: 131px; border: 1px solid black;"></canvas>
+	<canvas id = "rightBar" width="480" height="720" style = "position: absolute; left: 1034px; border: 1px solid black;"></canvas>
 	<div id = "test" min-width = "100%"></div> 
 </head>
 <body>
@@ -183,7 +183,7 @@
 						case 'g': ctx.fillStyle = "rgb("+ 50 +","+ 200 +","+ 50 +")"; break; //Grass
 						case 's': ctx.fillStyle = "lightgreen"; break; //Steppe (or Savanna)
 						case 'd': ctx.fillStyle = "tan"; break; //Desert
-						case 'h': ctx.fillStyle = "olive"; break; //low Hills
+						case 'h': ctx.fillStyle = "olivedrab"; break; //low Hills
 						case 'm': ctx.fillStyle = "white"; break; //Mountains
 						case 'c': ctx.fillStyle = "tan"; break; //Coasts
 						case 'i': ctx.fillStyle = "green"; break; //hIghland
@@ -200,7 +200,8 @@
 		var zoom = 8;
 		var drawDelta = true;
 		var grid = false;
-		var view = 0;
+		var view = 1;
+		var drawCoasts = true;
 		function drawMap()
 		{
 			ctx.clearRect(0, 0, 900, 720);
@@ -239,17 +240,18 @@
 							}
 						}	
 						else if(view == 1){
-							switch(map[i][j].type){
+							switch(map[yLook][xLook].type){
 							case 'w':
 							case 'r': ctx.fillStyle = "blue"; break;
-							case 'g': ctx.fillStyle = "rgb("+ 50 +","+ 200 +","+ 50 +")"; break;
+							case 'g': ctx.fillStyle = "mediumseagreen"; break;
 							case 's': ctx.fillStyle = "lightgreen"; break;
 							case 'd': ctx.fillStyle = "tan"; break;
 							case 'h': ctx.fillStyle = "olive"; break;
 							case 'm': ctx.fillStyle = "white"; break;
-							case 'c': ctx.fillStyle = "tan"; break;
-							case 'i': ctx.fillStyle = "green"; break;
-							case 'f': ctx.fillStyle = "darkgreen"; break;
+							case 'c': ctx.fillStyle = "green"; break;
+							case 'i': if(drawCoasts){ctx.fillStyle = "green";} break;
+							case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
+							case 'l': ctx.fillStyle = "grey"; break;
 							default:  ctx.fillStyle = "red"; break;
 						}
 						}
@@ -273,6 +275,10 @@
 			elevSpread();
 			currents();
 			rivers();
+			forest(200, 150);
+			forest(100, 1000);
+			forest(30, 5000);
+			forest(15, 4000);
 			for(i=0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
 					if(map[i][j].elevation > 0){
@@ -306,12 +312,8 @@
 									dNum++;
 								}
 								if(map[i][j].type == 'g' || map[i][j].type == 'i' || (map[i][j].type == 'h' && map[i][j].wetness > .1)){
-									chance += .005;
 									if(map[safeC(i+a)][safeC(j+b)].type == 'r'){
 										chance += .1;
-									}
-									if(map[safeC(i+a)][safeC(j+b)].type == 'f'){
-										chance += .125;
 									}
 								}
 							}
@@ -327,6 +329,72 @@
 				}
 			}
 			slap(500, 'd', 's', 2, 2);
+		}
+		function forest(treeCount, forestsNumber){
+			var arbs = treeCount;
+			var forestsC = forestsNumber;
+			var ranX = Math.floor(Math.random() * MAPSIZE);
+			var ranY = Math.floor(Math.random() * MAPSIZE);
+			var dir = Math.floor(Math.random() * 4);
+			while(arbs > 0 && forestsC > 0){		
+				dir = Math.floor(Math.random() * 4);
+					if(dir == 0){
+						ranY--;
+						ranX--;
+					}
+					else if(dir == 1){
+						ranX--;
+						ranY++;
+					}
+					else if(dir == 2){
+						ranY++;
+						ranX++;
+					}
+					else if(dir == 3){
+						ranX++;
+						ranY--;
+					}
+					ranY = safeC(ranY);
+					ranX = safeC(ranX);
+				while(forestsC > 0 && (map[ranY][ranX].elevation < .05 || map[ranY][ranX].elevation > .6 || map[ranY][ranX].wetness < .1  ||  arbs == 1)){
+					ranX = Math.floor(Math.random() * MAPSIZE);
+					ranY = Math.floor(Math.random() * MAPSIZE);
+					arbs = treeCount;
+					forestsC--;
+				}
+				var chance = Math.round(Math.random() * 10);
+				if(chance < 8){
+					map[ranY][ranX].type = 'f';
+				}
+				arbs--;
+			}
+			cleanForests();
+			cleanForests();
+		}
+		function cleanForests(){
+			var arbC = 0;
+			var considerations = [];
+			for(i = 0; i < map.length; i++){
+				for(j = 0; j < map[0].length; j++){
+					if(map[i][j].type != 'd' && map[i][j].elevation > 0){
+						arbC = 0;
+						for(a = -1; a < 2; a++){
+							for(b = -1; b < 2 ; b++){
+								if(map[safeC(a+i)][safeC(b+j)].type == 'f')
+								{
+									arbC++;
+								}
+							}
+						}
+						if(arbC > 2){
+							considerations.push([i, j]);
+						}
+					}
+				}
+			}
+			for(i = 0; i < considerations.length; i++){
+				map[considerations[i][0]][considerations[i][1]].type = 'f'; 
+			}
 		}
 		function mountain(rSize, rNum){
 			var yC = Math.floor(Math.random() * MAPSIZE);
