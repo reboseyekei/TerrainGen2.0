@@ -13,7 +13,7 @@
 		c.style.height = "2000px";
 		c.style.width = "2000px";
 		var devZoom = window.devicePixelRatio/(window.outerWidth/window.innerWidth);
-		var scale = (screen.width * devZoom/1920) * (screen.height * devZoom/1080);
+		var scale = Math.ceil(100 * (screen.width * devZoom/1920) * (screen.height * devZoom/1080))/100;
 		c.width *= scale;
 		c.height *= scale;
 		var ctx = c.getContext("2d");
