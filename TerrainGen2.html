@@ -348,6 +348,7 @@
 				}
 			}
 			slap(500, 'd', 's', 2, 2);
+			slap(50, 's', 'g', 3, 3);
 		}
 		function forest(treeCount, forestsNumber){
 			var arbs = treeCount;
@@ -810,7 +811,7 @@
 		
 		}
 		genWorld();
-		drawEntireMap();
+		//drawEntireMap();
 		//drawElevationMap();
 		for(i = 0; i < MAPSIZE; i++){ for(j = 0; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ yView = i; xView = j; i = MAPSIZE; j = i; }}}
 		var tz = performance.now();
@@ -818,7 +819,7 @@
 			document.addEventListener('keydown', mapV);
 			c.addEventListener('mousedown', handleMapClick);
 			if(drawDelta){
-				//drawMap();
+				drawMap();
 			}
 			if(delta){
 				drawRightBar();
