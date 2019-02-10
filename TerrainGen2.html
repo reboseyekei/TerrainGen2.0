@@ -8,17 +8,32 @@
 </head>
 <body>
 	<script>
-		document.body.style.webkitTransform = 'scale(1)'; 
+		//Create Canvases
 		var c = document.getElementById("map");
+		var r = document.getElementById("rightBar");
+		var l = document.getElementById("leftBar");
+		var ctx = c.getContext("2d");
+		var rtx = r.getContext("2d");
+		var ltx = l.getContext("2d");
+		//Scaling for high dpi canvas
+		const devZoom = window.devicePixelRatio/(window.outerWidth/window.innerWidth);
+		const scale = Math.ceil(100 * (screen.width * devZoom/1920) * (screen.height * devZoom/1080))/100;
 		c.style.height = "2000px";
 		c.style.width = "2000px";
-		var devZoom = window.devicePixelRatio/(window.outerWidth/window.innerWidth);
-		var scale = Math.ceil(100 * (screen.width * devZoom/1920) * (screen.height * devZoom/1080))/100;
+		r.style.height = "" + r.height + "px";
+		r.style.width = "" + r.width + "px";
+		l.style.height = "" + l.height + "px";
+		l.style.width = "" + l.width + "px";
+		r.width *= scale;
+		r.height *= scale;
+		l.width *= scale;
+		l.height *= scale;
 		c.width *= scale;
 		c.height *= scale;
-		var ctx = c.getContext("2d");
+		rtx.scale(scale, scale);
 		ctx.scale(scale, scale);
-		
+		ltx.scale(scale, scale);
+		//Create Map
 		function setMapDSize(w, h)
 		{
 			c.style.width = "" + w +"px";
@@ -65,18 +80,6 @@
 				map[i][j].heat = 2 - Math.abs(1000 - i)/500;
 			}
 		}
-		function getDist(y1, x1, y2, x2)
-		{
-			var dx = Math.abs(x2 - x1);
-			var dy = Math.abs(y2 - y1);
-			if (dx > MAPSIZE/2){
-				dx = MAPSIZE - dx;
-			}
-			if (dy > MAPSIZE/2){
-				dy = MAPSIZE - dy;
-			}
-			return Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-		}
 		function genName(male){
 			var mBegs = ["Le", "Ke", "Je", "Be", "Me", "Ko", "Ye", "E", "Cy", "Ce", "Ci", "A"];
 			var mMids = ["k", "r", "ke", "re", "vin", "t", "s", "n"];
@@ -92,6 +95,8 @@
 				return "" + fBegs[Math.floor(Math.random() * fBegs.length)] + "" + fMids[Math.floor(Math.random() * fMids.length)] + "" + fEnds[Math.floor(Math.random() * fEnds.length)];
 			}
 		}
+		var t0;
+		var t1;
 		function drawWetness(){
 			ctx.clearRect(0, 0, 840, 720);
 			c.width = MAPSIZE;
@@ -196,15 +201,22 @@
 				}
 			}
 		}
+		
 		var yView = 0;
 		var xView = 0;
 		var zoom = 8;
 		var drawDelta = true;
+		var delta = false;
 		var grid = false;
 		var view = 1;
-		var drawCoasts = true;
+		var drawCoasts = false;
+		var tileSelected = [];
 		function drawMap()
 		{
+			if(zoom > 19 || zoom < 1){ zoom = 18; }
+			if(20-zoom % 7 == 0 || 20-zoom % 8 == 0 || 20-zoom == 11 || 20-zoom == 13 || 20-zoom == 17 || 20-zoom == 19){
+				zoom = 15;
+			}
 			ctx.clearRect(0, 0, 900, 720);
 			setMapDSize(900, 720);
 			for(i = 0; i < Math.floor(720/(20-zoom)); i++){
@@ -242,21 +254,22 @@
 						}	
 						else if(view == 1){
 							switch(map[yLook][xLook].type){
-							case 'w':
-							case 'r': ctx.fillStyle = "blue"; break;
-							case 'g': ctx.fillStyle = "mediumseagreen"; break;
-							case 's': ctx.fillStyle = "lightgreen"; break;
-							case 'd': ctx.fillStyle = "tan"; break;
-							case 'h': ctx.fillStyle = "olive"; break;
-							case 'm': ctx.fillStyle = "white"; break;
-							case 'i': ctx.fillStyle = "green"; break;
-							case 'c': if(drawCoasts){ctx.fillStyle = "tan";} else{ ctx.fillStyle = "green"; } break;
-							case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
-							case 'l': ctx.fillStyle = "grey"; break;
-							default:  ctx.fillStyle = "red"; break;
-						}
+								case 'w':
+								case 'r': ctx.fillStyle = "blue"; break;
+								case 'g': ctx.fillStyle = "mediumseagreen"; break;
+								case 's': ctx.fillStyle = "lightgreen"; break;
+								case 'd': ctx.fillStyle = "tan"; break;
+								case 'h': ctx.fillStyle = "olivedrab"; break;
+								case 'm': ctx.fillStyle = "white"; break;
+								case 'i': ctx.fillStyle = "green"; break;
+								case 'c': if(drawCoasts){ctx.fillStyle = "tan";} else{ ctx.fillStyle = "green"; } break;
+								case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
+								case 'l': ctx.fillStyle = "grey"; break;
+								default:  ctx.fillStyle = "red"; break;
+							}
 						}
 					ctx.fillRect(Math.floor(j * (20-zoom)), Math.floor(i * (20-zoom)), (20-zoom), (20-zoom));
+					if(yLook == tileSelected[0] && xLook == tileSelected[1]){ ctx.strokeRect(Math.floor(j * (20-zoom)), Math.floor(i * (20-zoom)), (20-zoom), (20-zoom)); }
 					if(grid){
 						if(map[yLook][xLook].type == 'g' && zoom < 12){
 							ctx.strokeStyle = "darkgrey";
@@ -274,12 +287,17 @@
 			mountain(5000, 125);
 			//mountain(50, 300);
 			elevSpread();
+			t0 = performance.now();
 			currents();
+			t1 = performance.now();
+			console.log("currents took " + (t1-t0) + "ms to run");
 			rivers();
-			forest(200, 150);
-			forest(100, 1000);
-			forest(30, 5000);
-			forest(15, 4000);
+			forest(250, 150);
+			forest(150, 1000);
+			forest(100, 500);
+			forest(35, 5000);
+			forest(20, 4000);
+			cleanForests();
 			for(i=0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
 					if(map[i][j].elevation > 0){
@@ -369,32 +387,36 @@
 				}
 				arbs--;
 			}
-			cleanForests();
-			cleanForests();
 		}
 		function cleanForests(){
 			var arbC = 0;
 			var considerations = [];
-			for(i = 0; i < map.length; i++){
-				for(j = 0; j < map[0].length; j++){
-					if(map[i][j].type != 'd' && map[i][j].elevation > 0){
-						arbC = 0;
-						for(a = -1; a < 2; a++){
-							for(b = -1; b < 2 ; b++){
-								if(map[safeC(a+i)][safeC(b+j)].type == 'f')
-								{
-									arbC++;
+			for(h = 0; h < 2; h++){
+				var i = h*(MAPSIZE-1);
+				while(i < MAPSIZE && i >= 0){
+					var j = h*(MAPSIZE-1);
+					while(j < MAPSIZE && j >= 0){
+						if(map[i][j].type != 'd' && map[i][j].elevation > 0){
+							arbC = 0;
+							for(a = -1; a < 2; a++){
+								for(b = -1; b < 2 ; b++){
+									if(map[safeC(a+i)][safeC(b+j)].type == 'f')
+									{
+										arbC++;
+									}
 								}
 							}
+							if(arbC > 2){
+								considerations.push([i, j]);
+							}
 						}
-						if(arbC > 2){
-							considerations.push([i, j]);
-						}
+						if(h == 0){ j++; } else { j--; }
 					}
+					if(h == 0){ i++; } else { i--; }
 				}
-			}
-			for(i = 0; i < considerations.length; i++){
-				map[considerations[i][0]][considerations[i][1]].type = 'f'; 
+				for(i = 0; i < considerations.length; i++){
+					map[considerations[i][0]][considerations[i][1]].type = 'f'; 
+				}
 			}
 		}
 		function mountain(rSize, rNum){
@@ -514,25 +536,23 @@
 				var lastDir = -1;
 				var bannedDir = Math.floor(Math.random()*4);
 				var dir = -1;
-				var water = 75;
+				var water = 100;
 				var y = safeC(yC);
 				var x = safeC(xC);
 				var cS = 0;
-				var limit = 200;
+				var limit = 60;
 				while(cS < limit && water > 0){
 					y = safeC(y);
 					x = safeC(x);
-					var z = 0;
-						if(map[safeC(y+z)][x].type == 'w'){
-							water+=.75;
-						}
-						else{
-							water -= 1.5*map[safeC(y+z)][x].elevation;
-							map[safeC(y+z)][x].wetness += map[safeC(y+z)][x].elevation/8;
-							map[safeC(y+z)][x].heat += .01;
-							limit++;
-						}
-					
+					if(map[y][x].type == 'w'){
+						water+=2.5;
+						cS++;
+					}
+					else{
+						water -= 1.5*map[y][x].elevation;
+						map[y][x].wetness += .05 + map[y][x].elevation/16;
+						map[y][x].heat += .01;
+					}
 					do{
 						dir = Math.floor(Math.random()*4);
 					}while(dir == lastDir || dir == bannedDir);
@@ -540,7 +560,6 @@
 					else if(dir == 1){ x++; lastDir = 3;}
 					else if(dir == 2){ y++; lastDir = 0;}
 					else if(dir == 3){ x--;  lastDir = 1;}
-					cS++;
 				}
 			}
 			for(var i = 0; i < MAPSIZE; i+=2){
@@ -626,8 +645,8 @@
 					rS++;
 				}
 			}
-			for(var i = 0; i < MAPSIZE; i+=60){
-				for(var j = 0; j < MAPSIZE; j+=60){
+			for(var i = 0; i < MAPSIZE; i+=50){
+				for(var j = 0; j < MAPSIZE; j+=50){
 					if(map[i][j].elevation < .6 && map[i][j].wetness >= .35){
 						makeRiver(i, j);
 						id++;
@@ -757,16 +776,54 @@
 			}
 			else { drawDelta = false; }
 		}
+		function handleMapClick(e){
+			if(e){
+				console.log(event.clientX);
+				var x = safeC(xView + Math.floor((e.clientX - c.getBoundingClientRect().x)/(20-zoom)));
+				var y = safeC(yView + Math.floor((e.clientY - c.getBoundingClientRect().y)/(20-zoom)));
+				tileSelected = [y, x];
+				drawDelta = true;
+			}
+		}
+		function drawRightBar(){
+			switch(tab){
+				case 1:
+					switch(map[tileSelected[0]][tileSelected[1]].type){
+						case 'w':
+						case 'r': rtx.fillStyle = "blue"; break;
+						case 'g': rtx.fillStyle = "mediumseagreen"; break;
+						case 's': rtx.fillStyle = "lightgreen"; break;
+						case 'd': rtx.fillStyle = "tan"; break;
+						case 'h': rtx.fillStyle = "olivedrab"; break;
+						case 'm': rtx.fillStyle = "white"; break;
+						case 'i': rtx.fillStyle = "green"; break;
+						case 'c': if(drawCoasts){rtx.fillStyle = "tan";} else{ rtx.fillStyle = "green"; } break;
+						case 'f': rtx.fillStyle = "rgb(0, 80, 0)"; break;
+						case 'l': rtx.fillStyle = "grey"; break;
+						default:  rtx.fillStyle = "white"; break;
+					}
+					rtx.fillRect(15, 15, 30, 30);
+					rtx.strokeRect(15, 15, 30, 30);					
+			}
+		}
+		function drawLeftBar(){
 		
+		}
 		genWorld();
-		//drawEntireMap();
+		drawEntireMap();
 		//drawElevationMap();
 		for(i = 0; i < MAPSIZE; i++){ for(j = 0; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ yView = i; xView = j; i = MAPSIZE; j = i; }}}
+		var tz = performance.now();
 		setInterval(function(){
 			document.addEventListener('keydown', mapV);
+			c.addEventListener('mousedown', handleMapClick);
 			if(drawDelta){
-				drawMap();
+				//drawMap();
 			}
+			if(delta){
+				drawRightBar();
+			}
+			drawDelta = false;
 		}, 8);
 
 	</script>
