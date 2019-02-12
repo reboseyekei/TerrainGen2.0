@@ -213,14 +213,10 @@
 		var tileSelected = [];
 		function drawMap()
 		{
-			if(zoom > 19 || zoom < 1){ zoom = 18; }
-			if(20-zoom % 7 == 0 || 20-zoom % 8 == 0 || 20-zoom == 11 || 20-zoom == 13 || 20-zoom == 17 || 20-zoom == 19){
-				zoom = 15;
-			}
 			ctx.clearRect(0, 0, 900, 720);
 			setMapDSize(900, 720);
-			for(i = 0; i < Math.floor(720/(20-zoom)); i++){
-				for(j = 0; j < Math.floor(900/(20-zoom)); j++){
+			for(i = 0; i < Math.floor(720/zoom); i++){
+				for(j = 0; j < Math.floor(900/zoom); j++){
 					var yLook = safeC(i + yView);
 					var xLook = safeC(j + xView);
 						if(view == 0){
@@ -261,19 +257,19 @@
 								case 'd': ctx.fillStyle = "tan"; break;
 								case 'h': ctx.fillStyle = "olivedrab"; break;
 								case 'm': ctx.fillStyle = "white"; break;
-								case 'i': ctx.fillStyle = "green"; break;
+								case 'i': ctx.fillStyle = "#36a165"; break;
 								case 'c': if(drawCoasts){ctx.fillStyle = "tan";} else{ ctx.fillStyle = "green"; } break;
 								case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
 								case 'l': ctx.fillStyle = "grey"; break;
 								default:  ctx.fillStyle = "red"; break;
 							}
 						}
-					ctx.fillRect(Math.floor(j * (20-zoom)), Math.floor(i * (20-zoom)), (20-zoom), (20-zoom));
-					if(yLook == tileSelected[0] && xLook == tileSelected[1]){ ctx.strokeRect(Math.floor(j * (20-zoom)), Math.floor(i * (20-zoom)), (20-zoom), (20-zoom)); }
+					ctx.fillRect(Math.floor(j * zoom), Math.floor(i * zoom), zoom, zoom);
+					if(yLook == tileSelected[0] && xLook == tileSelected[1]){ ctx.strokeRect(Math.floor(j * zoom), Math.floor(i * zoom), zoom, zoom); }
 					if(grid){
 						if(map[yLook][xLook].type == 'g' && zoom < 12){
 							ctx.strokeStyle = "darkgrey";
-							ctx.strokeRect(Math.floor(j * (20-zoom)), Math.floor(i * (20-zoom)), (20-zoom), (20-zoom));
+							ctx.strokeRect(Math.floor(j * zoom), Math.floor(i * zoom), zoom, zoom);
 						}
 					}
 				}
@@ -761,34 +757,57 @@
 		function mapV(event){
 			if(event.keyCode == 37){
 				xView--;
+				if(zoom == 5){ xView--; }
 				drawDelta = true;	
 			}
 			else if(event.keyCode == 38){
 				yView--;
+				if(zoom == 5){ yView--; }
 				drawDelta = true;
 			}
 			else if(event.keyCode == 39){
 				xView++;
+				if(zoom == 5){ xView++; }
 				drawDelta = true;
 			}
 			else if(event.keyCode == 40){
 				yView++;
+				if(zoom == 5){ yView++; }
 				drawDelta = true;
+			}
+			else if(event.keyCode == 90){
+				if(zoom < 44){
+					zoom++;
+					while((900 % zoom != 0 || 720 % zoom != 0) && zoom < 45){
+						zoom++;
+					}
+					drawDelta = true;
+				}
+			}
+			else if(event.keyCode == 88){
+				if(zoom > 5){
+					zoom--;
+					while((900 % zoom != 0 || 720 % zoom != 0) && zoom > 4){
+						zoom--;
+					}
+					drawDelta = true;
+				}
 			}
 			else { drawDelta = false; }
 		}
 		function handleMapClick(e){
 			if(e){
-				console.log(event.clientX);
 				var x = safeC(xView + Math.floor((e.clientX - c.getBoundingClientRect().x)/(20-zoom)));
 				var y = safeC(yView + Math.floor((e.clientY - c.getBoundingClientRect().y)/(20-zoom)));
 				tileSelected = [y, x];
 				drawDelta = true;
+				delta = true;
 			}
 		}
+		var tab = 0;
 		function drawRightBar(){
 			switch(tab){
-				case 1:
+				case 0:
 					switch(map[tileSelected[0]][tileSelected[1]].type){
 						case 'w':
 						case 'r': rtx.fillStyle = "blue"; break;
@@ -820,11 +839,12 @@
 			c.addEventListener('mousedown', handleMapClick);
 			if(drawDelta){
 				drawMap();
+				drawDelta = false;
 			}
 			if(delta){
 				drawRightBar();
+				delta = false;
 			}
-			drawDelta = false;
 		}, 8);
 
 	</script>
