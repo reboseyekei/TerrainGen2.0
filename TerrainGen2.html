@@ -48,19 +48,30 @@
 		var map = new Array(MAPSIZE);
 		
 		//Classes: -----------------
+		function Building(){
+			this.name;
+			this.effect;
+			this.cost;
+			this.description;
+		}
+		var buildings = [];
+		var bNames = ["Manor", "Training Grounds", "Statue", "Farm", "Shop", "Barracks", "Blacksmith", "Plaza", "Market", "Granary", "Warehouse", "Workshop", "Bank", "Temple", "Tavern", "Port" ];
+		for(i = 0; i < bNames.length; i++){
+			buildings[i] = new Building();
+			buildings[i].name = bNames[i];
+		}
 		function Tile()
 		{
+			this.owner = -1;
+			this.travelQ = 0;
 			this.heat = 1;
 			this.elevation = .1;
 			this.wetness = 0;
 			this.type = 'g';
 			this.id = -1;
 			this.checked = -1;
-			this.building = [];
-		}
-		function City()
-		{
-		
+			this.building = -1;
+			this.city = -1;
 		}
 		function Noble()
 		{
@@ -70,8 +81,40 @@
 		function Society(){
 			this.levels = [];
 		}
+		function Resources(){
+			this.dirt = 0; this.sand = 0; this.ore = 0;
+			this.wood = 5; this.stone = 0;
+			this.gold = 5; this.food = 10;
+			this.population = 200;
+			this.manpower = 100;
+			this.sailors = 0;
+		}
+		function City(){
+			this.name = "";
+			this.size = 0;
+			this.administrator;
+			this.development;
+			this.population;
+			this.income;
+			this.housing;
+			this.food;
+		}
+		function Player(){
+			this.resources = new Resources();
+			this.cities = [];
+			this.citInd = -1;
+			this.character;
+			this.action = "claiming";
+			this.turn = 0;
+			this.size = 0;
+			this.color = "red";
+			this.tileSelected
+			this.yView = 0;
+			this.xView = 0;
+			this.zoom = 10;
+		}
 		//End Classes--------------
-		
+		var p = new Player();
 		
 		for(i = 0; i < MAPSIZE; i++){
 			map[i] = new Array(MAPSIZE);
@@ -201,13 +244,8 @@
 				}
 			}
 		}
-		
-		var yView = 0;
-		var xView = 0;
-		var zoom = 8;
 		var drawDelta = true;
-		var delta = false;
-		var grid = false;
+		var delta = true;
 		var view = 1;
 		var drawCoasts = false;
 		var tileSelected = [];
@@ -215,10 +253,10 @@
 		{
 			ctx.clearRect(0, 0, 900, 720);
 			setMapDSize(900, 720);
-			for(i = 0; i < Math.floor(720/zoom); i++){
-				for(j = 0; j < Math.floor(900/zoom); j++){
-					var yLook = safeC(i + yView);
-					var xLook = safeC(j + xView);
+			for(i = 0; i < Math.floor(720/p.zoom); i++){
+				for(j = 0; j < Math.floor(900/p.zoom); j++){
+					var yLook = safeC(i + p.yView);
+					var xLook = safeC(j + p.xView);
 						if(view == 0){
 							if(map[yLook][xLook].elevation <= 0){
 								ctx.fillStyle = "blue";
@@ -258,22 +296,77 @@
 								case 'h': ctx.fillStyle = "olivedrab"; break;
 								case 'm': ctx.fillStyle = "white"; break;
 								case 'i': ctx.fillStyle = "#36a165"; break;
-								case 'c': if(drawCoasts){ctx.fillStyle = "tan";} else{ ctx.fillStyle = "green"; } break;
+								case 'c': if(drawCoasts){ctx.fillStyle = "tan";} else{ ctx.fillStyle = "mediumseagreen"; } break;
 								case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
 								case 'l': ctx.fillStyle = "grey"; break;
+								case 'p': ctx.fillStyle = "black"; break; //pit
 								default:  ctx.fillStyle = "red"; break;
 							}
 						}
-					ctx.fillRect(Math.floor(j * zoom), Math.floor(i * zoom), zoom, zoom);
-					if(yLook == tileSelected[0] && xLook == tileSelected[1]){ ctx.strokeRect(Math.floor(j * zoom), Math.floor(i * zoom), zoom, zoom); }
-					if(grid){
-						if(map[yLook][xLook].type == 'g' && zoom < 12){
-							ctx.strokeStyle = "darkgrey";
-							ctx.strokeRect(Math.floor(j * zoom), Math.floor(i * zoom), zoom, zoom);
-						}
+					ctx.fillRect(Math.floor(j * p.zoom), Math.floor(i * p.zoom), p.zoom, p.zoom);
+					if(map[yLook][xLook].owner == p.turn){
+						ctx.fillStyle = p.color;
 					}
+					if(map[safeC(yLook + 1)][xLook].owner != map[yLook][xLook].owner){
+						ctx.fillRect((j) * (p.zoom), (i+(5/6)) * (p.zoom), (p.zoom), (p.zoom)/6);
+					}
+					if(map[safeC(yLook - 1)][xLook].owner != map[yLook][xLook].owner){
+						ctx.fillRect(j * (p.zoom), i * (p.zoom), (p.zoom), (p.zoom)/6);
+					}
+					if(map[yLook][safeC(xLook + 1)].owner != map[yLook][xLook].owner){
+						ctx.fillRect((j+(5/6)) * (p.zoom), (i) * (p.zoom), (p.zoom)/6, (p.zoom));
+					}
+					if(map[yLook][safeC(xLook - 1)].owner != map[yLook][xLook].owner){
+						ctx.fillRect(Math.floor(j * (p.zoom)), Math.floor(i * (p.zoom)), (p.zoom)/6, (p.zoom));
+					}
+					if(map[yLook][xLook].city != -1){ ctx.strokeRect(Math.floor(j * p.zoom)+1, Math.floor(i * p.zoom)+1, p.zoom-2, p.zoom-2); }
+					if(yLook == tileSelected[0] && xLook == tileSelected[1]){ ctx.strokeStyle = "gold"; ctx.strokeRect(Math.floor(j * p.zoom)+1, Math.floor(i * p.zoom)+1, p.zoom-2, p.zoom-2); }
+					ctx.strokeStyle = "black";
 				}
 			}
+		}
+		function drawTile(y1, x1){
+			var y = safeC(y1);
+			var x = safeC(x1);
+			var dY = (y1 - p.yView);
+			var dX = (x1 - p.xView);
+			switch(map[y][x].type){
+				case 'w':
+				case 'r': ctx.fillStyle = "blue"; break;
+				case 'g': ctx.fillStyle = "mediumseagreen"; break;
+				case 's': ctx.fillStyle = "lightgreen"; break;
+				case 'd': ctx.fillStyle = "tan"; break;
+				case 'h': ctx.fillStyle = "olivedrab"; break;
+				case 'm': ctx.fillStyle = "white"; break;
+				case 'i': ctx.fillStyle = "#36a165"; break;
+				case 'c': if(drawCoasts){ctx.fillStyle = "tan";} else{ ctx.fillStyle = "mediumseagreen"; } break;
+				case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
+				case 'l': ctx.fillStyle = "grey"; break;
+				case 'p': ctx.fillSTyle = "black"; break; //pit
+				default:  ctx.fillStyle = "red"; break;
+			}
+			if(map[y][x].travelQ > 0 && map[y][x].city == -1){
+				ctx.fillStyle = "tan";
+			}
+			ctx.fillRect(Math.floor(dX * p.zoom), Math.floor(dY * p.zoom), p.zoom, p.zoom);
+			if(map[y][x].owner == p.turn){
+				ctx.fillStyle = p.color;
+			}
+			if(map[safeC(y + 1)][x].owner != map[y][x].owner){
+				ctx.fillRect((dX) * (p.zoom), (dY+(5/6)) * (p.zoom), (p.zoom), (p.zoom)/6);
+			}
+			if(map[safeC(y - 1)][x].owner != map[y][x].owner){
+				ctx.fillRect(dX * (p.zoom), dY * (p.zoom), (p.zoom), (p.zoom)/6);
+			}
+			if(map[y][safeC(x + 1)].owner != map[y][x].owner){
+				ctx.fillRect((dX+(5/6)) * (p.zoom), (dY) * (p.zoom), (p.zoom)/6, (p.zoom));
+			}
+			if(map[y][safeC(x - 1)].owner != map[y][x].owner){
+				ctx.fillRect(Math.floor(dX * (p.zoom)), Math.floor(dY * (p.zoom)), (p.zoom)/6, (p.zoom));
+			}
+			if(map[y][x].city != -1){ ctx.strokeRect(Math.floor(dX * p.zoom)+1, Math.floor(dY * p.zoom)+1, p.zoom-2, p.zoom-2); }
+			if(y == tileSelected[0] && x == tileSelected[1]){ ctx.strokeStyle = "gold"; ctx.strokeRect(Math.floor(dX * p.zoom)+1, Math.floor(dY * p.zoom)+1, p.zoom-2, p.zoom-2); }
+			ctx.strokeStyle = "black";
 		}
 		var lands = [];
 		function genWorld()
@@ -305,6 +398,7 @@
 						}
 						if(map[i][j].elevation > .9){
 							map[i][j].type = 'm';
+							map[i][j].travelQ = -3;
 						}
 						else if(map[i][j].elevation >= .8){
 							map[i][j].type = 'l';
@@ -336,6 +430,7 @@
 						if(chance > Math.random())
 						{
 							map[i][j].type = 'f';
+							map[i][j].travelQ = -1;
 						}
 						if(dNum >= 4 && (map[i][j].type == 's' || map[i][j].type == 'f')){
 							map[i][j].type = 'd';
@@ -381,6 +476,7 @@
 				var chance = Math.round(Math.random() * 10);
 				if(chance < 8){
 					map[ranY][ranX].type = 'f';
+					map[ranY][ranX].travelQ = -1;
 				}
 				arbs--;
 			}
@@ -588,7 +684,7 @@
 						if(rS > 0){
 							map[y][x].type = 'r';
 							map[y][x].id = id;
-							map[y][x].elevation = 0
+							map[y][x].elevation = -.1;
 						}
 						var minDir = -1;
 						if(map[safeC(y - 1)][x].elevation < min && lastDir != 0 && bannedDir != 0 && map[safeC(y - 1)][x].id != id){
@@ -756,93 +852,326 @@
 		}
 		function mapV(event){
 			if(event.keyCode == 37){
-				xView--;
-				if(zoom == 5){ xView--; }
+				p.xView--;
+				if(p.zoom == 5){ p.xView--; }
 				drawDelta = true;	
 			}
 			else if(event.keyCode == 38){
-				yView--;
-				if(zoom == 5){ yView--; }
+				p.yView--;
+				if(p.zoom == 5){ p.yView--; }
 				drawDelta = true;
 			}
 			else if(event.keyCode == 39){
-				xView++;
-				if(zoom == 5){ xView++; }
+				p.xView++;
+				if(p.zoom == 5){ p.xView++; }
 				drawDelta = true;
 			}
 			else if(event.keyCode == 40){
-				yView++;
-				if(zoom == 5){ yView++; }
+				p.yView++;
+				if(p.zoom == 5){ p.yView++; }
 				drawDelta = true;
 			}
 			else if(event.keyCode == 90){
-				if(zoom < 44){
-					zoom++;
-					while((900 % zoom != 0 || 720 % zoom != 0) && zoom < 45){
-						zoom++;
+				if(p.zoom < 44){
+					p.zoom++;
+					while((900 % p.zoom != 0 || 720 % p.zoom != 0) && p.zoom < 45){
+						p.zoom++;
+					}
+					if(tileSelected.length == 2){
+						p.yView = Math.round(safeC(tileSelected[0] - 720/(2*p.zoom)));
+						p.xView = Math.round(safeC(tileSelected[1] - 900/(2*p.zoom)));
 					}
 					drawDelta = true;
 				}
 			}
 			else if(event.keyCode == 88){
-				if(zoom > 5){
-					zoom--;
-					while((900 % zoom != 0 || 720 % zoom != 0) && zoom > 4){
-						zoom--;
+				if(p.zoom > 1){
+					p.zoom--;
+					while((900 % p.zoom != 0 || 720 % p.zoom != 0) && p.zoom > 4){
+						p.zoom--;
+					}
+					if(tileSelected.length == 2){
+						p.yView = Math.round(safeC(tileSelected[0] - 720/(2*p.zoom)));
+						p.xView = Math.round(safeC(tileSelected[1] - 900/(2*p.zoom)));
 					}
 					drawDelta = true;
 				}
 			}
 			else { drawDelta = false; }
 		}
+		function claim(e, y1, x1){
+			var x, y;
+			var tY = tileSelected[0];
+			var tX = tileSelected[1];
+			if(e == 0){
+				x = x1; y = y1;
+			}
+			else{
+				x = safeC(p.xView + Math.floor((e.clientX - c.getBoundingClientRect().x)/(p.zoom)));
+				y = safeC(p.yView + Math.floor((e.clientY - c.getBoundingClientRect().y)/(p.zoom)));
+			}
+			tileSelected[0] = y;
+			tileSelected[1] = x;
+			if(e.type == "mousemove" || e == 0){
+				var canClaim = p.size == 0 && map[y][x].elevation > 0;
+				if(!canClaim){
+					for(a = -1; a < 2; a++){
+						for(b = -1; b < 2; b++){
+							if(map[safeC(y+a)][safeC(x+b)].owner == p.turn){
+								canClaim = true; a = 2; b = 2;
+							}
+						}
+					}
+					canClaim = canClaim && (p.resources.manpower >= 1) && (map[y][x].owner == -1) && map[y][x].elevation > 0;
+				}
+				if(canClaim){	
+					p.resources.manpower--;
+					map[y][x].owner = p.turn;
+					p.size++;
+					drawTile(y, x);
+					if(map[safeC(y + 1)][x].owner == p.turn){ drawTile(y+1, x); }
+					if(map[safeC(y - 1)][x].owner == p.turn){ drawTile(y-1, x); }
+					if(map[y][safeC(x + 1)].owner == p.turn){ drawTile(y, x+1); }
+					if(map[y][safeC(x - 1)].owner == p.turn){ drawTile(y, x-1); }
+					delta = true;
+				}
+			}
+			else {
+				c.removeEventListener('mousemove', claim);
+				c.removeEventListener('mouseup', claim);
+			}
+			drawTile(tY, tX);
+		}
 		function handleMapClick(e){
 			if(e){
-				var x = safeC(xView + Math.floor((e.clientX - c.getBoundingClientRect().x)/(20-zoom)));
-				var y = safeC(yView + Math.floor((e.clientY - c.getBoundingClientRect().y)/(20-zoom)));
+				var x = safeC(p.xView + Math.floor((e.clientX - c.getBoundingClientRect().x)/(p.zoom)));
+				var y = safeC(p.yView + Math.floor((e.clientY - c.getBoundingClientRect().y)/(p.zoom)));
+				var tY = y;
+				var tX = x;
+				if(tileSelected.length == 2){
+					tY = tileSelected[0];
+					tX = tileSelected[1];
+				}
 				tileSelected = [y, x];
-				drawDelta = true;
+				drawTile(y, x);
+				if(tY != y || tX != x){
+					drawTile(tY, tX);
+				}
 				delta = true;
+				if(p.action != ""){
+					if(p.action == "claiming" && p.resources.manpower > 1){
+						if(e.shiftKey){
+							c.addEventListener('mousemove', claim);
+							c.addEventListener('mouseup', claim);
+							claim(0, y, x);
+						}
+						else{
+							claim(0, y, x);
+						}
+					}
+					else if(map[y][x].owner == p.turn){
+						if(p.action == "road" && p.resources.manpower > 2){
+							if(map[y][x].travelQ == 0){
+								p.resources.manpower -= 2;
+								map[y][x].travelQ++;
+							}
+						}
+						else if((p.action == "digging" || (p.resources.dirt > 0 && p.action == "filling")) && p.resources.manpower >= 5){
+							p.resources.manpower -= 5;
+							if(p.action == "filling" && map[y][x].elevation < .5){
+								p.resources.dirt--;
+								map[y][x].elevation += .01;
+								if(map[y][x].elevation > 0){
+									if(map[y][x].type == 'w' || map[y][x].type == 'r'){
+										map[y][x].type = 'g';
+									}
+									if(map[y][x].elevation > .2){
+										map[y][x].type = 'i';
+									}
+									if(map[y][x].elevation > .4){
+										map[y][x].type = 'h';
+									}
+								}
+							}
+							else if(map[y][x].elevation > -1.1){
+								if(map[y][x].elevation <= 0){
+									p.resources.sand++;
+									map[y][x].elevation -= .01;
+								}
+								else{
+									if(map[y][x].type == 'c' || map[y][x].type == 'd'){
+										p.resources.sand++;
+									}
+									else{
+										p.resources.dirt++;
+									}
+									map[y][x].elevation -= .01;
+									if(map[y][x].elevation <= 0 && map[y][x].wetness > 0){
+										map[y][x].type = 'w';
+									}
+									else {
+										map[y][x].type = 'p';
+									}
+								}
+							}
+						}
+						else if(p.action == "clearing" && p.resources.manpower >= 2){
+							if(map[y][x].type == 'f'){
+								p.resources.manpower -= 2;
+								p.resources.wood++;
+								if(map[y][x].wetness == 0){
+									map[y][x].type = 's';
+								}
+								else if(map[y][x].elevation >= .6){
+									map[y][x].type = 'h';
+								}
+								else if(map[y][x].elevation > .175){
+									map[y][x].type = 'i';
+								}
+								else { map[y][x].type = 'g'; }
+								drawTile(y, x);
+							}
+							
+						}
+						else if(p.action == "managing"){
+							if(p.citInd != -1 && map[y][x].city == -1){
+								map[y][x].city = p.citInd;
+								p.cities[p.citInd].size++;
+								drawTile(y, x);
+							}
+						}
+						else{
+							p.action = "managing";
+						}
+					}
+				}
 			}
 		}
 		var tab = 0;
-		function drawRightBar(){
+		function drawMenus(){
+			var rect = r.getBoundingClientRect();
+			rtx.fillStyle = "#F2F4F4";
+			rtx.fillRect(0, 0, rect.width, 60);
+			rtx.fillRect(0, rect.height - 60, rect.width, 60);
+			rtx.fillStyle = "black";
+			rtx.font = "16px Courier";
+			rtx.fillText("Buildings", 2, 40);
+			rtx.fillText("Provinces", 98, 40);
+			rtx.fillText("Estates", 203, 40);
+			rtx.fillText("Court", 289, 40);
+			rtx.fillText("Cities", 360, 40);
+			rtx.fillText("Character", 2, rect.height - 20);
+			rtx.fillText("Military", 100, rect.height - 20);
+			rtx.fillText("Selected", 185, rect.height - 20);
+			rtx.fillText("Summary", 275, rect.height - 20);
+		}
+		drawMenus();
+		var establishing = false;
+		function drawRightBar(e){
+			var rect = r.getBoundingClientRect();
+			if(e!=0 && e.type == 'mousedown'){
+				var y = e.clientY;
+				var x = e.clientX - rect.left;
+			}
+			if(y < 60){
+				tab = Math.floor(5*x/rect.width);
+			}
+			else if(y > rect.height-60){
+				tab = 5+Math.floor(5*x/rect.width);
+			}
+			rtx.clearRect(0, 60, rect.width, rect.height - 120);
 			switch(tab){
 				case 0:
-					switch(map[tileSelected[0]][tileSelected[1]].type){
-						case 'w':
-						case 'r': rtx.fillStyle = "blue"; break;
-						case 'g': rtx.fillStyle = "mediumseagreen"; break;
-						case 's': rtx.fillStyle = "lightgreen"; break;
-						case 'd': rtx.fillStyle = "tan"; break;
-						case 'h': rtx.fillStyle = "olivedrab"; break;
-						case 'm': rtx.fillStyle = "white"; break;
-						case 'i': rtx.fillStyle = "green"; break;
-						case 'c': if(drawCoasts){rtx.fillStyle = "tan";} else{ rtx.fillStyle = "green"; } break;
-						case 'f': rtx.fillStyle = "rgb(0, 80, 0)"; break;
-						case 'l': rtx.fillStyle = "grey"; break;
-						default:  rtx.fillStyle = "white"; break;
+					if(tileSelected.length == 2){
+						var yS = tileSelected[0];
+						var xS = tileSelected[1];
+						
 					}
-					rtx.fillRect(15, 15, 30, 30);
-					rtx.strokeRect(15, 15, 30, 30);					
+					break;
+				case 1: //Cities
+					rtx.font = "20px Arial";
+					rtx.fillStyle = "black";
+					if(!establishing){
+						rtx.fillText("Establish Settlement", 20, 120);
+						rtx.strokeRect(18, 95, 200, 30);
+						rtx.strokeRect(15, 150, rect.width - 30, rect.height - 300);
+						rtx.strokeRect(15, 150, rect.width - 30, 30);
+						for(j = 0; j < Math.min(8, p.cities.length); j++){
+							rtx.font = "19px Courier";
+							rtx.strokeStyle = "black";
+							rtx.strokeRect(15, 180 + (75 * j), r.width-30, 75);
+							rtx.strokeStyle = "black"
+							rtx.fillStyle = "black";
+							rtx.font = "20px Calibri";
+							rtx.fillText(p.cities[j].name, 80, 220 + (j * 75));
+						}
+					}
+					if(e!=0){
+						if(e.type == 'mousedown'){
+							if(!establishing && y > 95 && y < 125 && x > 18 && x < 218){
+								establishing = true;
+								p.citInd = p.cities.length;
+								p.cities[p.citInd] = new City();
+								p.action = "managing";
+								document.addEventListener('keydown', drawRightBar);
+							}
+							else if(y > 500 && x > 0 && x < rect.width){
+								if(establishing){
+									document.removeEventListener('keydown', drawRightBar);
+									establishing = false;
+									p.citInd = -1;
+								}
+							}
+						}
+						else if(establishing && e.type == 'keydown'){
+							if(e.keyCode >= 65 && e.keyCode <= 90){
+								p.cities[p.citInd].name += e.key;
+							}
+							else if(e.keyCode == 8){
+								p.cities[p.citInd].name = p.cities[p.citInd].name.substring(0,p.cities[p.citInd].name.length-1);
+							}
+							else if(e.keyCode == 13){
+								document.removeEventListener('keydown', drawRightBar);
+							}
+						}
+					}
+					if(establishing){
+						rtx.clearRect(0, 60, rect.width, rect.height - 120);
+						rtx.fillText("City Name: ", 10, 120);
+						rtx.fillText(p.cities[p.citInd].name, 120, 120);
+						rtx.fillText("City Size: " + p.cities[p.citInd].size, 10, 180);
+						rtx.fillText("Finish", 10, 500);
+					}
+					break;
+				default:
+					rtx.fillText("Tab is Incomplete: " + tab, 50, 300); break;
 			}
 		}
 		function drawLeftBar(){
-		
+			ltx.clearRect(0, 0, l.width, l.height);
+			ltx.font = "16px Arial";
+			ltx.fillText("Gold: " + Math.floor(p.resources.gold), 5, 320);
+			ltx.fillText("Wood: " + Math.floor(p.resources.wood), 5, 340);
+			ltx.fillText("Stone: " + Math.floor(p.resources.stone),5 , 360);
+			ltx.fillText("Manpower: " + Math.floor(p.resources.manpower), 5, 520);
+			ltx.fillText("Population: " + Math.floor(p.resources.population), 5, 540);
 		}
 		genWorld();
 		//drawEntireMap();
 		//drawElevationMap();
-		for(i = 0; i < MAPSIZE; i++){ for(j = 0; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ yView = i; xView = j; i = MAPSIZE; j = i; }}}
+		for(i = 0; i < MAPSIZE; i++){ for(j = 0; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ p.yView = i; p.xView = j; i = MAPSIZE; j = i; }}}
 		var tz = performance.now();
 		setInterval(function(){
 			document.addEventListener('keydown', mapV);
 			c.addEventListener('mousedown', handleMapClick);
+			r.addEventListener('mousedown', drawRightBar);
 			if(drawDelta){
 				drawMap();
 				drawDelta = false;
 			}
 			if(delta){
-				drawRightBar();
+				drawRightBar(0);
+				drawLeftBar();
 				delta = false;
 			}
 		}, 8);
