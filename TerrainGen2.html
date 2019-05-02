@@ -55,7 +55,7 @@
 			this.description;
 		}
 		var buildings = [];
-		var bNames = ["Manor", "Training Grounds", "Statue", "Farm", "Shop", "Barracks", "Blacksmith", "Plaza", "Market", "Granary", "Warehouse", "Workshop", "Bank", "Temple", "Tavern", "Port" ];
+		var bNames = ["Town Center", "Prison", "Fortress", "Manor", "Training Grounds", "Statue", "Farm", "Shop", "Barracks", "Blacksmith", "Plaza", "Market", "Granary", "Warehouse", "Workshop", "Bank", "Temple", "Tavern", "Port" ];
 		for(i = 0; i < bNames.length; i++){
 			buildings[i] = new Building();
 			buildings[i].name = bNames[i];
@@ -102,6 +102,7 @@
 		function Player(){
 			this.resources = new Resources();
 			this.cities = [];
+			this.menView = [0, -1];
 			this.citInd = -1;
 			this.character;
 			this.action = "claiming";
@@ -120,7 +121,7 @@
 			map[i] = new Array(MAPSIZE);
 			for(j = 0; j < MAPSIZE; j++){
 				map[i][j] = new Tile();
-				map[i][j].heat = 2 - Math.abs(1000 - i)/500;
+				map[i][j].heat = (1.85 - Math.abs(1000 - i)/500) + Math.random() * .15;
 			}
 		}
 		function genName(male){
@@ -166,6 +167,40 @@
 					}
 					else if(map[i][j].wetness <= 5){
 						ctx.fillStyle = "purple";
+					}
+					else{
+						ctx.fillStyle = "blue";
+					}
+					ctx.fillRect(j*1, i*1, 1, 1);
+				}
+			}
+		}
+		function drawHeat(){
+			ctx.clearRect(0, 0, 840, 720);
+			c.width = MAPSIZE;
+			c.height = MAPSIZE;
+			var lastElev = -1;
+			var rgbGrass;
+			var rgbBeach;
+			for(i = 0; i < MAPSIZE; i++){
+				for(j = 0; j < MAPSIZE; j++){
+					if(map[i][j].heat <= 0.5){
+						ctx.fillStyle = "white";
+					}
+					else if(map[i][j].heat <= .75){
+						ctx.fillStyle = "tan";
+					}
+					else if(map[i][j].heat <= 1){
+						ctx.fillStyle = "olive";
+					}
+					else if(map[i][j].heat <= 1.5){
+						ctx.fillStyle = "yellow";
+					}
+					else if(map[i][j].heat <= 2){
+						ctx.fillStyle = "orange";
+					}
+					else if(map[i][j].heat <= 3){
+						ctx.fillStyle = "red";
 					}
 					else{
 						ctx.fillStyle = "blue";
@@ -227,18 +262,19 @@
 			for(i = 0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
 					switch(map[i][j].type){
-						case 'w': //Water
-						case 'r': ctx.fillStyle = "blue"; break; //River
-						case 'g': ctx.fillStyle = "rgb("+ 50 +","+ 200 +","+ 50 +")"; break; //Grass
-						case 's': ctx.fillStyle = "lightgreen"; break; //Steppe (or Savanna)
-						case 'd': ctx.fillStyle = "tan"; break; //Desert
-						case 'h': ctx.fillStyle = "olivedrab"; break; //low Hills
-						case 'm': ctx.fillStyle = "white"; break; //Mountains
-						case 'c': ctx.fillStyle = "tan"; break; //Coasts
-						case 'i': ctx.fillStyle = "green"; break; //hIghland
-						case 'l': ctx.fillStyle = "grey"; break; //high hiLls
-						case 'f': ctx.fillStyle = "darkgreen"; break; //Forest
-						default:  ctx.fillStyle = "red"; break; //Error
+						case 'w': ctx.fillStyle = "blue"; break;
+						case 'r': ctx.fillStyle = "rgb(0, 106, 220)"; break;
+						case 'g': ctx.fillStyle = "mediumseagreen"; break;
+						case 's': ctx.fillStyle = "lightgreen"; break;
+						case 'd': ctx.fillStyle = "tan"; break;
+						case 'h': ctx.fillStyle = "olivedrab"; break;
+						case 'm': ctx.fillStyle = "white"; break;
+						case 'i': ctx.fillStyle = "#36a165"; break;
+						case 'c': ctx.fillStyle = "tan"; break;
+						case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
+						case 'l': ctx.fillStyle = "grey"; break;
+						case 'p': ctx.fillStyle = "black"; break; //pit
+						default:  ctx.fillStyle = "red"; break;
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
 				}
@@ -288,7 +324,7 @@
 						}	
 						else if(view == 1){
 							switch(map[yLook][xLook].type){
-								case 'w':
+								case 'w': ctx.fillStyle = "blue"; break;
 								case 'r': ctx.fillStyle = "blue"; break;
 								case 'g': ctx.fillStyle = "mediumseagreen"; break;
 								case 's': ctx.fillStyle = "lightgreen"; break;
@@ -331,8 +367,8 @@
 			var dY = (y1 - p.yView);
 			var dX = (x1 - p.xView);
 			switch(map[y][x].type){
-				case 'w':
-				case 'r': ctx.fillStyle = "blue"; break;
+				case 'w': ctx.fillStyle = "blue"; break;
+				case 'r': ctx.fillStyle = "rgb(0, 106, 220)"; break;
 				case 'g': ctx.fillStyle = "mediumseagreen"; break;
 				case 's': ctx.fillStyle = "lightgreen"; break;
 				case 'd': ctx.fillStyle = "tan"; break;
@@ -644,7 +680,7 @@
 					else{
 						water -= 1.5*map[y][x].elevation;
 						map[y][x].wetness += .05 + map[y][x].elevation/16;
-						map[y][x].heat += .01;
+						map[y][x].heat += .02;
 					}
 					do{
 						dir = Math.floor(Math.random()*4);
@@ -685,6 +721,11 @@
 							map[y][x].type = 'r';
 							map[y][x].id = id;
 							map[y][x].elevation = -.1;
+							for(a = -1; a < 2; a++){
+								for(b = -1; b < 2; b++){
+									map[safeC(y+a)][safeC(x+b)].wetness += .25;
+								}
+							}
 						}
 						var minDir = -1;
 						if(map[safeC(y - 1)][x].elevation < min && lastDir != 0 && bannedDir != 0 && map[safeC(y - 1)][x].id != id){
@@ -1047,7 +1088,6 @@
 				}
 			}
 		}
-		var tab = 0;
 		function drawMenus(){
 			var rect = r.getBoundingClientRect();
 			rtx.fillStyle = "#F2F4F4";
@@ -1065,9 +1105,16 @@
 			rtx.fillText("Selected", 185, rect.height - 20);
 			rtx.fillText("Summary", 275, rect.height - 20);
 		}
-		drawMenus();
+		//drawMenus();
+		function drawTextBox(x, y, str, can, fontSize){
+			var strLen = str.length;
+			can.font = ""+fontSize+"px Arial";
+			can.strokeStyle = "black";
+			can.strokeRect(x, y, .5*fontSize*strLen, 1.2*fontSize);
+			can.fillText(str, x+1, y+fontSize);
+		}
 		var establishing = false;
-		function drawRightBar(e){
+		function drawRightBar(e){ //Handles Right Menus. Menu interfacing is handled by p.menView[]. p.menView[0] -> what tab to view; other spots store subdata for the tab
 			var rect = r.getBoundingClientRect();
 			if(e!=0 && e.type == 'mousedown'){
 				var y = e.clientY;
@@ -1080,12 +1127,20 @@
 				tab = 5+Math.floor(5*x/rect.width);
 			}
 			rtx.clearRect(0, 60, rect.width, rect.height - 120);
-			switch(tab){
-				case 0:
+			switch(p.menView[0]){
+				case 0: //Buildings
 					if(tileSelected.length == 2){
 						var yS = tileSelected[0];
 						var xS = tileSelected[1];
-						
+						switch(p.menView[1]){
+							case -1: break;
+							case 0: break;
+							case 1: break;
+							case 2: break;
+							case 3: break;
+							case 4: break;
+							default: p.menView[1] = -1; delta = true; break;
+						}
 					}
 					break;
 				case 1: //Cities
