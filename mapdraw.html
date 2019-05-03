@@ -125,7 +125,7 @@
 			}
 		}
 		function genName(male){
-			var mBegs = ["Le", "Ke", "Je", "Be", "Me", "Ko", "Ye", "E", "Cy", "Ce", "Ci", "A"];
+			var mBegs = ["Le", "Ke", "Je", "Be", "Me", "Ko", "Ye", "E", "Cy", "Ce", "Ci"];
 			var mMids = ["k", "r", "ke", "re", "vin", "t", "s", "n"];
 			var mEnds = ["os", "ih", "o", "it", "en", "in", "de", "des", "re", "ro", "ov", "us", "on"];
 			
@@ -268,12 +268,14 @@
 						case 's': ctx.fillStyle = "lightgreen"; break;
 						case 'd': ctx.fillStyle = "tan"; break;
 						case 'h': ctx.fillStyle = "olivedrab"; break;
-						case 'm': ctx.fillStyle = "white"; break;
+						case 'm': ctx.fillStyle = "#B4B4B4"; break;
 						case 'i': ctx.fillStyle = "#36a165"; break;
 						case 'c': ctx.fillStyle = "tan"; break;
 						case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
 						case 'l': ctx.fillStyle = "grey"; break;
 						case 'p': ctx.fillStyle = "black"; break; //pit
+						case 'e': ctx.fillStyle = "white"; break; //ice
+						case 'n': ctx.fillStyle = "#EFFCFF"; break; //snow
 						default:  ctx.fillStyle = "red"; break;
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
@@ -344,19 +346,33 @@
 								}
 							}
 						}
+						chance += map[i][j].wetness/10
+						chance += .02/map[i][j].heat;
 						if(chance > Math.random())
 						{
 							map[i][j].type = 'f';
 							map[i][j].travelQ = -1;
 						}
 						if(dNum >= 4 && (map[i][j].type == 's' || map[i][j].type == 'f')){
+							map[i][j].heat += .1;
 							map[i][j].type = 'd';
+						}
+					}
+					if(map[i][j].heat < .125){
+						if(map[i][j].type == 'r' || map[i][j].type == 'w'){
+							map[i][j].type = 'e';
+						}
+						else {
+							map[i][j].type = 'n';
 						}
 					}
 				}
 			}
 			slap(500, 'd', 's', 2, 2);
 			slap(50, 's', 'g', 3, 3);
+			slap(50, 'e', 'w', 2, 4);
+			slap(5, 'w', 'e', 2, 5);
+			
 		}
 		function forest(treeCount, forestsNumber){
 			var arbs = treeCount;
@@ -555,11 +571,15 @@
 					y = safeC(y);
 					x = safeC(x);
 					if(map[y][x].type == 'w'){
-						water+=2.5;
+						if(map[i][j].heat > .15){
+							water+=2.5;
+						}
+						else{ water-=10; }
 						cS++;
 					}
 					else{
-						water -= 1.5*map[y][x].elevation;
+						water -= 1.25*map[y][x].elevation;
+						water -= .05/map[y][x].heat;
 						map[y][x].wetness += .05 + map[y][x].elevation/16;
 						map[y][x].heat += .02;
 					}
@@ -738,7 +758,7 @@
 						if(elevChange != 2){
 							map[y][x].elevation = elevChange;
 						}
-					}
+					}	
 					if(checkValidity(y+1, x, checking)){
 						stack.push([y+1, x]);
 					}
