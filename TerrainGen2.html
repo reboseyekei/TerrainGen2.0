@@ -257,7 +257,7 @@
 		}
 		function drawEntireMap()
 		{
-			setMapDSize(MAPSIZE, MAPSIZE	)
+			setMapDSize(MAPSIZE, MAPSIZE);
 			ctx.clearRect(0, 0, MAPSIZE, MAPSIZE);
 			for(i = 0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
@@ -268,12 +268,14 @@
 						case 's': ctx.fillStyle = "lightgreen"; break;
 						case 'd': ctx.fillStyle = "tan"; break;
 						case 'h': ctx.fillStyle = "olivedrab"; break;
-						case 'm': ctx.fillStyle = "white"; break;
+						case 'm': ctx.fillStyle = "#B4B4B4"; break;
 						case 'i': ctx.fillStyle = "#36a165"; break;
 						case 'c': ctx.fillStyle = "tan"; break;
 						case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
 						case 'l': ctx.fillStyle = "grey"; break;
 						case 'p': ctx.fillStyle = "black"; break; //pit
+						case 'e': ctx.fillStyle = "white"; break; //ice
+						case 'n': ctx.fillStyle = "#EFFCFF"; break; //snow
 						default:  ctx.fillStyle = "red"; break;
 					}
 					ctx.fillRect(j*1, i*1, 1, 1);
@@ -293,52 +295,23 @@
 				for(j = 0; j < Math.floor(900/p.zoom); j++){
 					var yLook = safeC(i + p.yView);
 					var xLook = safeC(j + p.xView);
-						if(view == 0){
-							if(map[yLook][xLook].elevation <= 0){
-								ctx.fillStyle = "blue";
-							}
-							else if(map[yLook][xLook].elevation < .05){
-								ctx.fillStyle = "tan";
-							}
-							else if(map[yLook][xLook].elevation <= .1){
-								ctx.fillStyle = "lightgreen";
-							}
-							else if(map[yLook][xLook].elevation <= .25){
-								ctx.fillStyle = "green";
-							}
-							else if(map[yLook][xLook].elevation <= 0.4){
-								ctx.fillStyle = "darkgreen";
-							}	
-							else if(map[yLook][xLook].elevation <= 0.6){
-								ctx.fillStyle = "olive";
-							}
-							else if(map[yLook][xLook].elevation <= .8){
-								ctx.fillStyle = "black";
-							}
-							else if(map[yLook][xLook].elevation <= 0.9){
-								ctx.fillStyle = "grey";
-							}
-							else{
-								ctx.fillStyle = "rgb(255, 255, 255)";
-							}
-						}	
-						else if(view == 1){
-							switch(map[yLook][xLook].type){
-								case 'w': ctx.fillStyle = "blue"; break;
-								case 'r': ctx.fillStyle = "blue"; break;
-								case 'g': ctx.fillStyle = "mediumseagreen"; break;
-								case 's': ctx.fillStyle = "lightgreen"; break;
-								case 'd': ctx.fillStyle = "tan"; break;
-								case 'h': ctx.fillStyle = "olivedrab"; break;
-								case 'm': ctx.fillStyle = "white"; break;
-								case 'i': ctx.fillStyle = "#36a165"; break;
-								case 'c': if(drawCoasts){ctx.fillStyle = "tan";} else{ ctx.fillStyle = "mediumseagreen"; } break;
-								case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
-								case 'l': ctx.fillStyle = "grey"; break;
-								case 'p': ctx.fillStyle = "black"; break; //pit
-								default:  ctx.fillStyle = "red"; break;
-							}
-						}
+					switch(map[i][j].type){
+						case 'w': ctx.fillStyle = "blue"; break;
+						case 'r': ctx.fillStyle = "rgb(0, 106, 220)"; break;
+						case 'g': ctx.fillStyle = "mediumseagreen"; break;
+						case 's': ctx.fillStyle = "lightgreen"; break;
+						case 'd': ctx.fillStyle = "tan"; break;
+						case 'h': ctx.fillStyle = "olivedrab"; break;
+						case 'm': ctx.fillStyle = "#B4B4B4"; break;
+						case 'i': ctx.fillStyle = "#36a165"; break;
+						case 'c': ctx.fillStyle = "tan"; break;
+						case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
+						case 'l': ctx.fillStyle = "grey"; break;
+						case 'p': ctx.fillStyle = "black"; break; //pit
+						case 'e': ctx.fillStyle = "white"; break; //ice
+						case 'n': ctx.fillStyle = "#EFFCFF"; break; //snow
+						default:  ctx.fillStyle = "red"; break;
+					}
 					ctx.fillRect(Math.floor(j * p.zoom), Math.floor(i * p.zoom), p.zoom, p.zoom);
 					if(map[yLook][xLook].owner == p.turn){
 						ctx.fillStyle = p.color;
@@ -366,19 +339,21 @@
 			var x = safeC(x1);
 			var dY = (y1 - p.yView);
 			var dX = (x1 - p.xView);
-			switch(map[y][x].type){
+			switch(map[i][j].type){
 				case 'w': ctx.fillStyle = "blue"; break;
 				case 'r': ctx.fillStyle = "rgb(0, 106, 220)"; break;
 				case 'g': ctx.fillStyle = "mediumseagreen"; break;
 				case 's': ctx.fillStyle = "lightgreen"; break;
 				case 'd': ctx.fillStyle = "tan"; break;
 				case 'h': ctx.fillStyle = "olivedrab"; break;
-				case 'm': ctx.fillStyle = "white"; break;
+				case 'm': ctx.fillStyle = "#B4B4B4"; break;
 				case 'i': ctx.fillStyle = "#36a165"; break;
-				case 'c': if(drawCoasts){ctx.fillStyle = "tan";} else{ ctx.fillStyle = "mediumseagreen"; } break;
+				case 'c': ctx.fillStyle = "tan"; break;
 				case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
 				case 'l': ctx.fillStyle = "grey"; break;
-				case 'p': ctx.fillSTyle = "black"; break; //pit
+				case 'p': ctx.fillStyle = "black"; break; //pit
+				case 'e': ctx.fillStyle = "white"; break; //ice
+				case 'n': ctx.fillStyle = "#EFFCFF"; break; //snow
 				default:  ctx.fillStyle = "red"; break;
 			}
 			if(map[y][x].travelQ > 0 && map[y][x].city == -1){
@@ -463,19 +438,33 @@
 								}
 							}
 						}
+						chance += map[i][j].wetness/10
+						chance += .02/map[i][j].heat;
 						if(chance > Math.random())
 						{
 							map[i][j].type = 'f';
 							map[i][j].travelQ = -1;
 						}
 						if(dNum >= 4 && (map[i][j].type == 's' || map[i][j].type == 'f')){
+							map[i][j].heat += .1;
 							map[i][j].type = 'd';
+						}
+					}
+					if(map[i][j].heat < .125){
+						if(map[i][j].type == 'r' || map[i][j].type == 'w'){
+							map[i][j].type = 'e';
+						}
+						else {
+							map[i][j].type = 'n';
 						}
 					}
 				}
 			}
 			slap(500, 'd', 's', 2, 2);
 			slap(50, 's', 'g', 3, 3);
+			slap(50, 'e', 'w', 2, 4);
+			slap(5, 'w', 'e', 2, 5);
+			
 		}
 		function forest(treeCount, forestsNumber){
 			var arbs = treeCount;
@@ -581,7 +570,7 @@
 					xC = safeC(xC);
 					if(map[yC][xC].type != 'w'){
 						if(rS == 0){
-							map[yC][xC].elevation = 1;
+							//map[yC][xC].elevation = 1;
 							map[yC][xC].type = 'm';
 						}
 						else {
@@ -674,11 +663,15 @@
 					y = safeC(y);
 					x = safeC(x);
 					if(map[y][x].type == 'w'){
-						water+=2.5;
+						if(map[i][j].heat > .15){
+							water+=2.5;
+						}
+						else{ water-=10; }
 						cS++;
 					}
 					else{
-						water -= 1.5*map[y][x].elevation;
+						water -= 1.25*map[y][x].elevation;
+						water -= .05/map[y][x].heat;
 						map[y][x].wetness += .05 + map[y][x].elevation/16;
 						map[y][x].heat += .02;
 					}
@@ -857,8 +850,7 @@
 						if(elevChange != 2){
 							map[y][x].elevation = elevChange;
 						}
-					}
-					
+					}	
 					if(checkValidity(y+1, x, checking)){
 						stack.push([y+1, x]);
 					}
@@ -890,6 +882,103 @@
 				}
 			}
 			return continents;
+		}
+		var tileWidth = 8;
+		var tileHeight = 4;
+		function drawITile(x, y, color){
+			var startX = c.offsetWidth/2+(x-y)*tileWidth/2
+			var startY = (x+y)*tileHeight/2
+			ctx.fillStyle = color;
+			ctx.beginPath();
+			ctx.moveTo(startX, startY);
+			ctx.lineTo(startX + tileWidth/2, startY + tileHeight/2); //Right Corner
+			ctx.lineTo(startX, startY + tileHeight); //Bottom Corner
+			ctx.lineTo(startX - tileWidth/2, startY + tileHeight/2); //Left Corner
+			ctx.lineTo(startX, startY); //Top Corner
+			ctx.closePath();
+			ctx.fill();
+		}
+		function drawBlock(x, y, z, type) {
+			var top, right, left;
+			switch(type){
+				case 'w': top = "blue"; break;
+				case 'r': top = "rgb(0, 106, 220)"; break;
+				case 'g': top = "mediumseagreen"; break;
+				case 's': top = "lightgreen"; break;
+				case 'd': top = "tan"; break;
+				case 'h': top = "olivedrab"; break;
+				case 'm': top = "yellow"; break;
+				case 'i': top = "#36a165"; break;
+				case 'c': top = "tan"; break;
+				case 'f': top = "rgb(0, 80, 0)"; break;
+				case 'l': top = "grey"; break;
+				case 'p': top = "black"; break; //pit
+				case 'e': top = "white"; break; //ice
+				case 'n': top = "#EFFCFF"; break; //snow
+				default:  top = "red"; break;
+			}
+			right = "#cccccc";
+			left = "#999999";
+			var startX = c.offsetWidth/2+(x-y)*tileWidth/2
+			var startY = (x+y)*tileHeight/2
+			
+			// draw top
+			ctx.beginPath();
+			ctx.moveTo(startX, startY+( -z * tileHeight));
+			ctx.lineTo(startX +(tileWidth / 2),startY + (tileHeight / 2 - z * tileHeight));
+			ctx.lineTo(startX,startY + (tileHeight - z * tileHeight));
+			ctx.lineTo(startX-(tileWidth / 2),startY + (tileHeight / 2 - z * tileHeight));
+			ctx.closePath();
+			ctx.fillStyle = top;
+			ctx.fill();
+
+			// draw left
+			ctx.beginPath();
+			ctx.moveTo(startX-(tileWidth / 2),startY+(tileHeight / 2 - z * tileHeight));
+			ctx.lineTo(startX,startY+(tileHeight - z * tileHeight));
+			ctx.lineTo(startX,startY+(tileHeight));
+			ctx.lineTo(startX-(tileWidth / 2),startY+(tileHeight / 2));
+			ctx.closePath();
+			ctx.fillStyle = left;
+			ctx.fill();
+
+			// draw right
+			ctx.beginPath();
+			ctx.moveTo(startX+(tileWidth / 2),startY+(tileHeight / 2 - z * tileHeight));
+			ctx.lineTo(startX,startY+(tileHeight - z * tileHeight));
+			ctx.lineTo(startX,startY+(tileHeight));
+			ctx.lineTo(startX+(tileWidth / 2),startY+(tileHeight / 2));
+			ctx.closePath();
+			ctx.fillStyle = right;
+			ctx.fill();		
+		}
+		function drawIsoMap()
+		{
+			setMapDSize(900, 720);
+			for(i = 0; i < Math.floor(1500/p.zoom); i++){
+				for(j = 0; j < Math.floor(1500/p.zoom); j++){
+					var yLook = safeC(i + p.yView);
+					var xLook = safeC(j + p.xView);
+						switch(map[yLook][xLook].type){
+							case 'w': col = "blue"; break;
+							case 'r': col = "rgb(0, 106, 220)"; break;
+							case 'g': col = "mediumseagreen"; break;
+							case 's': col = "lightgreen"; break;
+							case 'd': col = "tan"; break;
+							case 'h': col = "olivedrab"; break;
+							case 'm': col = "#B4B4B4"; break;
+							case 'i': col = "#36a165"; break;
+							case 'c': col = "tan"; break;
+							case 'f': col = "rgb(0, 80, 0)"; break;
+							case 'l': col = "grey"; break;
+							case 'p': col = "black"; break; //pit
+							case 'e': col = "white"; break; //ice
+							case 'n': col = "#EFFCFF"; break; //snow
+							default:  col = "red"; break;
+						}
+					drawBlock(j, i, 10*map[safeC(i + p.yView)][safeC(j + p.xView)].elevation,map[yLook][xLook].type );
+				}
+			}
 		}
 		function mapV(event){
 			if(event.keyCode == 37){
@@ -1221,7 +1310,7 @@
 			c.addEventListener('mousedown', handleMapClick);
 			r.addEventListener('mousedown', drawRightBar);
 			if(drawDelta){
-				drawMap();
+				drawIsoMap();
 				drawDelta = false;
 			}
 			if(delta){
