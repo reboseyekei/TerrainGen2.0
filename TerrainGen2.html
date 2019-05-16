@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<canvas id = "leftBar" width="125" height="720" style = "position: absolute; left: 1px; border: 1px solid black;"></canvas>
+	<canvas id = "leftBar" width="0" height="720" style = "position: absolute; left: 1px; border: 1px solid black;"></canvas>
 	<canvas id = "map" width="2000" height="2000" style = "position: absolute; left: 131px; border: 1px solid black;"></canvas>
-	<canvas id = "rightBar" width="480" height="720" style = "position: absolute; left: 1034px; border: 1px solid black;"></canvas>
+	<canvas id = "rightBar" width="0" height="720" style = "position: absolute; left: 1034px; border: 1px solid black;"></canvas>
 	<div id = "test" min-width = "100%"></div> 
 </head>
 <body>
@@ -461,7 +461,7 @@
 				}
 			}
 			slap(500, 'd', 's', 2, 2);
-			slap(50, 's', 'g', 3, 3);
+			slap(50, 's', 'g', 2, 3);
 			slap(50, 'e', 'w', 2, 4);
 			slap(5, 'w', 'e', 2, 5);
 			
@@ -570,7 +570,7 @@
 					xC = safeC(xC);
 					if(map[yC][xC].type != 'w'){
 						if(rS == 0){
-							//map[yC][xC].elevation = 1;
+							map[yC][xC].elevation = 1;
 							map[yC][xC].type = 'm';
 						}
 						else {
@@ -883,8 +883,8 @@
 			}
 			return continents;
 		}
-		var tileWidth = 8;
-		var tileHeight = 4;
+		var tileWidth = 12;
+		var tileHeight = 6;
 		function drawITile(x, y, color){
 			var startX = c.offsetWidth/2+(x-y)*tileWidth/2
 			var startY = (x+y)*tileHeight/2
@@ -900,9 +900,11 @@
 		}
 		function drawBlock(x, y, z, type) {
 			var top, right, left;
+			right = "#cccccc";
+			left = "#999999";
 			switch(type){
-				case 'w': top = "blue"; break;
-				case 'r': top = "rgb(0, 106, 220)"; break;
+				case 'w': top = "blue"; left = "rgb(0, 106, 220)"; right = "blue"; break;
+				case 'r': left = "rgb(0, 106, 220)"; right = "rgb(0, 106, 220)";top = "rgb(0, 106, 220)"; break;
 				case 'g': top = "mediumseagreen"; break;
 				case 's': top = "lightgreen"; break;
 				case 'd': top = "tan"; break;
@@ -917,8 +919,8 @@
 				case 'n': top = "#EFFCFF"; break; //snow
 				default:  top = "red"; break;
 			}
-			right = "#cccccc";
-			left = "#999999";
+			if(z > 10){ right = "yellow"; }
+			
 			var startX = c.offsetWidth/2+(x-y)*tileWidth/2
 			var startY = (x+y)*tileHeight/2
 			
@@ -955,50 +957,33 @@
 		function drawIsoMap()
 		{
 			setMapDSize(900, 720);
-			for(i = 0; i < Math.floor(1500/p.zoom); i++){
-				for(j = 0; j < Math.floor(1500/p.zoom); j++){
+			for(i = 0; i < Math.floor(1000/p.zoom); i++){
+				for(j = 0; j < Math.floor(1000/p.zoom); j++){
 					var yLook = safeC(i + p.yView);
 					var xLook = safeC(j + p.xView);
-						switch(map[yLook][xLook].type){
-							case 'w': col = "blue"; break;
-							case 'r': col = "rgb(0, 106, 220)"; break;
-							case 'g': col = "mediumseagreen"; break;
-							case 's': col = "lightgreen"; break;
-							case 'd': col = "tan"; break;
-							case 'h': col = "olivedrab"; break;
-							case 'm': col = "#B4B4B4"; break;
-							case 'i': col = "#36a165"; break;
-							case 'c': col = "tan"; break;
-							case 'f': col = "rgb(0, 80, 0)"; break;
-							case 'l': col = "grey"; break;
-							case 'p': col = "black"; break; //pit
-							case 'e': col = "white"; break; //ice
-							case 'n': col = "#EFFCFF"; break; //snow
-							default:  col = "red"; break;
-						}
 					drawBlock(j, i, 10*map[safeC(i + p.yView)][safeC(j + p.xView)].elevation,map[yLook][xLook].type );
 				}
 			}
 		}
-		function mapV(event){
+		function mapV(event){ //left
 			if(event.keyCode == 37){
 				p.xView--;
-				if(p.zoom == 5){ p.xView--; }
+				p.yView++;
 				drawDelta = true;	
 			}
-			else if(event.keyCode == 38){
+			else if(event.keyCode == 38){ //up
 				p.yView--;
-				if(p.zoom == 5){ p.yView--; }
+				p.xView--;
 				drawDelta = true;
 			}
-			else if(event.keyCode == 39){
+			else if(event.keyCode == 39){ //right
 				p.xView++;
-				if(p.zoom == 5){ p.xView++; }
+				p.yView--;
 				drawDelta = true;
 			}
-			else if(event.keyCode == 40){
+			else if(event.keyCode == 40){ //down
 				p.yView++;
-				if(p.zoom == 5){ p.yView++; }
+				p.xView++;
 				drawDelta = true;
 			}
 			else if(event.keyCode == 90){
