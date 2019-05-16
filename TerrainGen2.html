@@ -883,8 +883,8 @@
 			}
 			return continents;
 		}
-		var tileWidth = 12;
-		var tileHeight = 6;
+		var tileWidth = 14;
+		var tileHeight = 7;
 		function drawITile(x, y, color){
 			var startX = c.offsetWidth/2+(x-y)*tileWidth/2;
 			var startY = 1200+((x+y)*tileHeight/2);
@@ -955,8 +955,8 @@
 		function drawIsoMap()
 		{
 			setMapDSize(1200, 700);
-			for(i = 0; i < Math.floor(1000/p.zoom); i++){
-				for(j = 0; j < Math.floor(1000/p.zoom); j++){
+			for(i = 0; i < Math.floor(1200/tileWidth); i++){
+				for(j = 0; j < Math.floor(1200/tileWidth); j++){
 					var yLook = safeC(i + p.yView);
 					var xLook = safeC(j + p.xView);
 					drawBlock(j, i, 10*map[safeC(i + p.yView)][safeC(j + p.xView)].elevation,map[yLook][xLook].type );
@@ -985,7 +985,7 @@
 				drawDelta = true;
 			}
 			else if(event.keyCode == 90){
-				if(p.zoom < 44){
+				if(p.zoom < 20){
 					p.zoom++;
 					while((900 % p.zoom != 0 || 720 % p.zoom != 0) && p.zoom < 45){
 						p.zoom++;
@@ -996,9 +996,11 @@
 					}
 					drawDelta = true;
 				}
+				tileWidth = p.zoom*2;
+				tileHeight = p.zoom;
 			}
 			else if(event.keyCode == 88){
-				if(p.zoom > 1){
+				if(p.zoom > 2){
 					p.zoom--;
 					while((900 % p.zoom != 0 || 720 % p.zoom != 0) && p.zoom > 4){
 						p.zoom--;
@@ -1009,6 +1011,8 @@
 					}
 					drawDelta = true;
 				}
+				tileWidth = p.zoom*2;
+				tileHeight = p.zoom;
 			}
 			else { drawDelta = false; }
 		}
