@@ -1,1018 +1,79 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<canvas id = "leftBar" width="0" height="720" style = "position: absolute; left: 1px; "></canvas>
-	<canvas id = "map" width="2500" height="2500" style = "position: absolute; left: 131px; border: 1px solid black;"></canvas>
-	<canvas id = "rightBar" width="0" height="720" style = "position: absolute; left: 1034px;"></canvas>
+	<canvas id = "leftBar" width="350" height="900" style = "position: absolute;top: 15px; left: 10px; border: 1px solid black;"></canvas>
+	<canvas id = "map" width="1080" height="900" style = "position: absolute; top: 15px; left: 371px; border: 1px solid black;"></canvas>
+	<canvas id = "rightBar" width="410" height="900" style = "position: absolute;top: 15px; left: 1462px; border: 1px solid black;"></canvas>
 	<div id = "test" min-width = "100%"></div> 
 </head>
 <body>
-	<script>
-		//Create Canvases
-		var c = document.getElementById("map");
-		var r = document.getElementById("rightBar");
-		var l = document.getElementById("leftBar");
-		var ctx = c.getContext("2d");
-		var rtx = r.getContext("2d");
-		var ltx = l.getContext("2d");
-		//Scaling for high dpi canvas
-		const devZoom = window.devicePixelRatio/(window.outerWidth/window.innerWidth);
-		const scale = Math.ceil(100 * (screen.width * devZoom/1920) * (screen.height * devZoom/1080))/100;
-		c.style.height = "2000px";
-		c.style.width = "2000px";
-		r.style.height = "" + r.height + "px";
-		r.style.width = "" + r.width + "px";
-		l.style.height = "" + l.height + "px";
-		l.style.width = "" + l.width + "px";
-		r.width *= scale;
-		r.height *= scale;
-		l.width *= scale;
-		l.height *= scale;
-		c.width *= scale;
-		c.height *= scale;
-		rtx.scale(scale, scale);
-		ctx.scale(scale, scale);
-		ltx.scale(scale, scale);
-		//Create Map
-		function setMapDSize(w, h)
-		{
-			c.style.width = "" + w +"px";
-			c.style.height = "" + h +"px";
-			
-			c.width = w * scale;
-			c.height = h * scale;
-			ctx.scale(scale, scale);
-		}
-		
-		const MAPSIZE = 2000;
+
+		<script type="text/javascript" src="canvas.js"></script>
+		<script type="text/javascript" src="classes.js"></script>
+		<script type="text/javascript" src="map.js"></script>
+		<script type="text/javascript" src="draw.js"></script>
+		<script>
+		const MAPSIZE = 500;
+		const MODI = MAPSIZE/2000;
+		var lands = [];
+		var drawDelta = true;
+		var delta = true;
+		var start = false;
+		var view = 1;
+		var drawCoasts = false;
+		var tileSelected = [];
+		var establishing = false;
 		var map = new Array(MAPSIZE);
-		
-		//Classes: -----------------
-		function Building(){
-			this.name;
-			this.effect;
-			this.cost;
-			this.description;
-		}
-		var buildings = [];
-		var bNames = ["Town Center", "Prison", "Fortress", "Manor", "Training Grounds", "Statue", "Farm", "Shop", "Barracks", "Blacksmith", "Plaza", "Market", "Granary", "Warehouse", "Workshop", "Bank", "Temple", "Tavern", "Port" ];
-		for(i = 0; i < bNames.length; i++){
-			buildings[i] = new Building();
-			buildings[i].name = bNames[i];
-		}
-		function Tile()
-		{
-			this.owner = -1;
-			this.travelQ = 0;
-			this.heat = 1;
-			this.elevation = .1;
-			this.wetness = 0;
-			this.type = 'g';
-			this.id = -1;
-			this.checked = -1;
-			this.building = -1;
-			this.city = -1;
-		}
-		function Noble()
-		{
-			this.name = "";
-			this.skill = 0;
-		}
-		function Society(){
-			this.levels = [];
-		}
-		function Resources(){
-			this.dirt = 0; this.sand = 0; this.ore = 0;
-			this.wood = 5; this.stone = 0;
-			this.gold = 5; this.food = 10;
-			this.population = 200;
-			this.manpower = 100;
-			this.sailors = 0;
-		}
-		function City(){
-			this.name = "";
-			this.size = 0;
-			this.administrator;
-			this.development;
-			this.population;
-			this.income;
-			this.housing;
-			this.food;
-		}
-		function Player(){
-			this.resources = new Resources();
-			this.cities = [];
-			this.menView = [0, -1];
-			this.citInd = -1;
-			this.character;
-			this.action = "claiming";
-			this.turn = 0;
-			this.size = 0;
-			this.color = "red";
-			this.tileSelected
-			this.yView = 0;
-			this.xView = 0;
-			this.zoom = 10;
-		}
-		//End Classes--------------
 		var p = new Player();
-		
+		p.resources.wood = 10;
+		p.resources.manpower = 100;
+		p.resources.food = 200;
+		p.resources.population = 200;
 		for(i = 0; i < MAPSIZE; i++){
 			map[i] = new Array(MAPSIZE);
 			for(j = 0; j < MAPSIZE; j++){
 				map[i][j] = new Tile();
-				map[i][j].heat = (1.85 - Math.abs(1000 - i)/500) + Math.random() * .15;
-			}
-		}
-		function genName(male){
-			var mBegs = ["Le", "Ke", "Je", "Be", "Me", "Ko", "Ye", "E", "Cy", "Ce", "Ci", "A"];
-			var mMids = ["k", "r", "ke", "re", "vin", "t", "s", "n"];
-			var mEnds = ["os", "ih", "o", "it", "en", "in", "de", "des", "re", "ro", "ov", "us", "on"];
-			
-			var fBegs = ["Ke", "Ti", "Di", "De", "Li", "Ki", "Ve", "Al", "Ma", "Ni", "Ari", "A", "E", "So"];
-			var fMids = ["r", "n", "c", "s", "r", "or", "ret", "ken"];
-			var fEnds = ["a", "i", "ei", "is", "ia", "a", "iev", "ana"];
-			if(male){
-				return "" + mBegs[Math.floor(Math.random() * mBegs.length)] + "" + mMids[Math.floor(Math.random() * mMids.length)] + "" + mEnds[Math.floor(Math.random() * mEnds.length)];
-			}
-			else{
-				return "" + fBegs[Math.floor(Math.random() * fBegs.length)] + "" + fMids[Math.floor(Math.random() * fMids.length)] + "" + fEnds[Math.floor(Math.random() * fEnds.length)];
-			}
-		}
-		var t0;
-		var t1;
-		function drawWetness(){
-			ctx.clearRect(0, 0, 840, 720);
-			c.width = MAPSIZE;
-			c.height = MAPSIZE;
-			var lastElev = -1;
-			var rgbGrass;
-			var rgbBeach;
-			for(i = 0; i < MAPSIZE; i++){
-				for(j = 0; j < MAPSIZE; j++){
-					if(map[i][j].wetness <= 0){
-						ctx.fillStyle = "white";
-					}
-					else if(map[i][j].wetness <= .05){
-						ctx.fillStyle = "tan";
-					}
-					else if(map[i][j].wetness <= .1){
-						ctx.fillStyle = "olive";
-					}
-					else if(map[i][j].wetness <= .5){
-						ctx.fillStyle = "lightgreen";
-					}
-					else if(map[i][j].wetness <= 1){
-						ctx.fillStyle = "green";
-					}
-					else if(map[i][j].wetness <= 5){
-						ctx.fillStyle = "purple";
-					}
-					else{
-						ctx.fillStyle = "blue";
-					}
-					ctx.fillRect(j*1, i*1, 1, 1);
-				}
-			}
-		}
-		function drawHeat(){
-			ctx.clearRect(0, 0, 840, 720);
-			c.width = MAPSIZE;
-			c.height = MAPSIZE;
-			var lastElev = -1;
-			var rgbGrass;
-			var rgbBeach;
-			for(i = 0; i < MAPSIZE; i++){
-				for(j = 0; j < MAPSIZE; j++){
-					if(map[i][j].heat <= 0.5){
-						ctx.fillStyle = "white";
-					}
-					else if(map[i][j].heat <= .75){
-						ctx.fillStyle = "tan";
-					}
-					else if(map[i][j].heat <= 1){
-						ctx.fillStyle = "olive";
-					}
-					else if(map[i][j].heat <= 1.5){
-						ctx.fillStyle = "yellow";
-					}
-					else if(map[i][j].heat <= 2){
-						ctx.fillStyle = "orange";
-					}
-					else if(map[i][j].heat <= 3){
-						ctx.fillStyle = "red";
-					}
-					else{
-						ctx.fillStyle = "blue";
-					}
-					ctx.fillRect(j*1, i*1, 1, 1);
-				}
-			}
-		}
-		function drawElevationMap()
-		{
-			ctx.clearRect(0, 0, 840, 720);
-			c.width = MAPSIZE;
-			c.height = MAPSIZE;
-			var lastElev = -1;
-			var rgbGrass;
-			var rgbBeach;
-			for(i = 0; i < MAPSIZE; i++){
-				for(j = 0; j < MAPSIZE; j++){
-					if(map[i][j].elevation != lastElev){
-						rgbGrass = (Math.floor((map[i][j].elevation * 200)));
-						rgbBeach = 200 - (Math.floor((map[i][j].elevation * 100)));
-						if(map[i][j].elevation <= 0){
-							ctx.fillStyle = "blue";
-						}
-						else if(map[i][j].elevation < .05){
-							ctx.fillStyle = "tan";
-						}
-						else if(map[i][j].elevation <= .1){
-							ctx.fillStyle = "lightgreen";
-						}
-						else if(map[i][j].elevation <= .25){
-							ctx.fillStyle = "green";
-						}
-						else if(map[i][j].elevation <= 0.4){
-							ctx.fillStyle = "darkgreen";
-						}	
-						else if(map[i][j].elevation <= 0.6){
-							ctx.fillStyle = "olive";
-						}
-						else if(map[i][j].elevation <= .8){
-							ctx.fillStyle = "black";
-						}
-						else if(map[i][j].elevation <= 0.9){
-							ctx.fillStyle = "grey";
-						}
-						else{
-							ctx.fillStyle = "rgb(255, 255, 255)";
-						}
-						lastElev = map[i][j].elevation;
-					}
-					ctx.fillRect(j*1, i*1, 1, 1);
-				}
-			}
-		}
-		function drawEntireMap()
-		{
-			setMapDSize(MAPSIZE, MAPSIZE);
-			ctx.clearRect(0, 0, MAPSIZE, MAPSIZE);
-			for(i = 0; i < MAPSIZE; i++){
-				for(j = 0; j < MAPSIZE; j++){
-					switch(map[i][j].type){
-						case 'w': ctx.fillStyle = "blue"; break;
-						case 'r': ctx.fillStyle = "rgb(0, 106, 220)"; break;
-						case 'g': ctx.fillStyle = "mediumseagreen"; break;
-						case 's': ctx.fillStyle = "lightgreen"; break;
-						case 'd': ctx.fillStyle = "tan"; break;
-						case 'h': ctx.fillStyle = "olivedrab"; break;
-						case 'm': ctx.fillStyle = "#B4B4B4"; break;
-						case 'i': ctx.fillStyle = "#36a165"; break;
-						case 'c': ctx.fillStyle = "tan"; break;
-						case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
-						case 'l': ctx.fillStyle = "grey"; break;
-						case 'p': ctx.fillStyle = "black"; break; //pit
-						case 'e': ctx.fillStyle = "white"; break; //ice
-						case 'n': ctx.fillStyle = "#EFFCFF"; break; //snow
-						default:  ctx.fillStyle = "red"; break;
-					}
-					ctx.fillRect(j*1, i*1, 1, 1);
-				}
-			}
-		}
-		var drawDelta = true;
-		var delta = true;
-		var view = 1;
-		var drawCoasts = false;
-		var tileSelected = [];
-		function drawMap()
-		{
-			ctx.clearRect(0, 0, 900, 720);
-			setMapDSize(900, 720);
-			for(i = 0; i < Math.floor(720/p.zoom); i++){
-				for(j = 0; j < Math.floor(900/p.zoom); j++){
-					var yLook = safeC(i + p.yView);
-					var xLook = safeC(j + p.xView);
-					switch(map[i][j].type){
-						case 'w': ctx.fillStyle = "blue"; break;
-						case 'r': ctx.fillStyle = "rgb(0, 106, 220)"; break;
-						case 'g': ctx.fillStyle = "mediumseagreen"; break;
-						case 's': ctx.fillStyle = "lightgreen"; break;
-						case 'd': ctx.fillStyle = "tan"; break;
-						case 'h': ctx.fillStyle = "olivedrab"; break;
-						case 'm': ctx.fillStyle = "#B4B4B4"; break;
-						case 'i': ctx.fillStyle = "#36a165"; break;
-						case 'c': ctx.fillStyle = "tan"; break;
-						case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
-						case 'l': ctx.fillStyle = "grey"; break;
-						case 'p': ctx.fillStyle = "black"; break; //pit
-						case 'e': ctx.fillStyle = "white"; break; //ice
-						case 'n': ctx.fillStyle = "#EFFCFF"; break; //snow
-						default:  ctx.fillStyle = "red"; break;
-					}
-					ctx.fillRect(Math.floor(j * p.zoom), Math.floor(i * p.zoom), p.zoom, p.zoom);
-					if(map[yLook][xLook].owner == p.turn){
-						ctx.fillStyle = p.color;
-					}
-					if(map[safeC(yLook + 1)][xLook].owner != map[yLook][xLook].owner){
-						ctx.fillRect((j) * (p.zoom), (i+(5/6)) * (p.zoom), (p.zoom), (p.zoom)/6);
-					}
-					if(map[safeC(yLook - 1)][xLook].owner != map[yLook][xLook].owner){
-						ctx.fillRect(j * (p.zoom), i * (p.zoom), (p.zoom), (p.zoom)/6);
-					}
-					if(map[yLook][safeC(xLook + 1)].owner != map[yLook][xLook].owner){
-						ctx.fillRect((j+(5/6)) * (p.zoom), (i) * (p.zoom), (p.zoom)/6, (p.zoom));
-					}
-					if(map[yLook][safeC(xLook - 1)].owner != map[yLook][xLook].owner){
-						ctx.fillRect(Math.floor(j * (p.zoom)), Math.floor(i * (p.zoom)), (p.zoom)/6, (p.zoom));
-					}
-					if(map[yLook][xLook].city != -1){ ctx.strokeRect(Math.floor(j * p.zoom)+1, Math.floor(i * p.zoom)+1, p.zoom-2, p.zoom-2); }
-					if(yLook == tileSelected[0] && xLook == tileSelected[1]){ ctx.strokeStyle = "gold"; ctx.strokeRect(Math.floor(j * p.zoom)+1, Math.floor(i * p.zoom)+1, p.zoom-2, p.zoom-2); }
-					ctx.strokeStyle = "black";
-				}
-			}
-		}
-		function drawTile(y1, x1){
-			var y = safeC(y1);
-			var x = safeC(x1);
-			var dY = (y1 - p.yView);
-			var dX = (x1 - p.xView);
-			switch(map[i][j].type){
-				case 'w': ctx.fillStyle = "blue"; break;
-				case 'r': ctx.fillStyle = "rgb(0, 106, 220)"; break;
-				case 'g': ctx.fillStyle = "mediumseagreen"; break;
-				case 's': ctx.fillStyle = "lightgreen"; break;
-				case 'd': ctx.fillStyle = "tan"; break;
-				case 'h': ctx.fillStyle = "olivedrab"; break;
-				case 'm': ctx.fillStyle = "#B4B4B4"; break;
-				case 'i': ctx.fillStyle = "#36a165"; break;
-				case 'c': ctx.fillStyle = "tan"; break;
-				case 'f': ctx.fillStyle = "rgb(0, 80, 0)"; break;
-				case 'l': ctx.fillStyle = "grey"; break;
-				case 'p': ctx.fillStyle = "black"; break; //pit
-				case 'e': ctx.fillStyle = "white"; break; //ice
-				case 'n': ctx.fillStyle = "#EFFCFF"; break; //snow
-				default:  ctx.fillStyle = "red"; break;
-			}
-			if(map[y][x].travelQ > 0 && map[y][x].city == -1){
-				ctx.fillStyle = "tan";
-			}
-			ctx.fillRect(Math.floor(dX * p.zoom), Math.floor(dY * p.zoom), p.zoom, p.zoom);
-			if(map[y][x].owner == p.turn){
-				ctx.fillStyle = p.color;
-			}
-			if(map[safeC(y + 1)][x].owner != map[y][x].owner){
-				ctx.fillRect((dX) * (p.zoom), (dY+(5/6)) * (p.zoom), (p.zoom), (p.zoom)/6);
-			}
-			if(map[safeC(y - 1)][x].owner != map[y][x].owner){
-				ctx.fillRect(dX * (p.zoom), dY * (p.zoom), (p.zoom), (p.zoom)/6);
-			}
-			if(map[y][safeC(x + 1)].owner != map[y][x].owner){
-				ctx.fillRect((dX+(5/6)) * (p.zoom), (dY) * (p.zoom), (p.zoom)/6, (p.zoom));
-			}
-			if(map[y][safeC(x - 1)].owner != map[y][x].owner){
-				ctx.fillRect(Math.floor(dX * (p.zoom)), Math.floor(dY * (p.zoom)), (p.zoom)/6, (p.zoom));
-			}
-			if(map[y][x].city != -1){ ctx.strokeRect(Math.floor(dX * p.zoom)+1, Math.floor(dY * p.zoom)+1, p.zoom-2, p.zoom-2); }
-			if(y == tileSelected[0] && x == tileSelected[1]){ ctx.strokeStyle = "gold"; ctx.strokeRect(Math.floor(dX * p.zoom)+1, Math.floor(dY * p.zoom)+1, p.zoom-2, p.zoom-2); }
-			ctx.strokeStyle = "black";
-		}
-		var lands = [];
-		function genWorld()
-		{
-			genOceans(7000000, 1);
-			lands = slap(20000, 'g', 'w', -1, 0);
-			mountain(5000, 125);
-			//mountain(50, 300);
-			elevSpread();
-			
-			currents();
-			
-			rivers();
-			forest(250, 150);
-			forest(150, 1000);
-			forest(100, 500);
-			forest(35, 5000);
-			forest(20, 4000);
-			cleanForests();
-			for(i=0; i < MAPSIZE; i++){
-				for(j = 0; j < MAPSIZE; j++){
-					if(map[i][j].elevation > 0){
-						if(map[i][j].type == 'g' && map[i][j].elevation < .6 && map[i][j].wetness == 0 && map[i][j].heat > Math.random()){
-							map[i][j].type = 'd';
-						}
-						else if(map[i][j].wetness < .1){
-							map[i][j].type = 's';
-						}
-						if(map[i][j].elevation > .9){
-							map[i][j].type = 'm';
-							map[i][j].travelQ = -3;
-						}
-						else if(map[i][j].elevation >= .8){
-							map[i][j].type = 'l';
-						}
-						else if(map[i][j].elevation >= .6){
-							map[i][j].type = 'h';
-						}
-						if(map[i][j].elevation < .05){
-							map[i][j].type = 'c';
-						}
-						if(map[i][j].type == 'g' && map[i][j].elevation > .135){
-							map[i][j].type = 'i';
-						}
-						var chance = .05;
-						var dNum = 0;
-						if(map[i][j].type == 'd' || map[i][j].type == 'm'){ chance = 0; }
-						for(a = -1; a < 2; a++){
-							for(b = -1; b < 2; b++){
-								if(map[safeC(i+a)][safeC(j+b)].type == 'd'){
-									dNum++;
-								}
-								if(map[i][j].type == 'g' || map[i][j].type == 'i' || (map[i][j].type == 'h' && map[i][j].wetness > .1)){
-									if(map[safeC(i+a)][safeC(j+b)].type == 'r'){
-										chance += .1;
-									}
-								}
-							}
-						}
-						chance += map[i][j].wetness/10
-						chance += .02/map[i][j].heat;
-						if(chance > Math.random())
-						{
-							map[i][j].type = 'f';
-							map[i][j].travelQ = -1;
-						}
-						if(dNum >= 4 && (map[i][j].type == 's' || map[i][j].type == 'f')){
-							map[i][j].heat += .1;
-							map[i][j].type = 'd';
-						}
-					}
-					else{ map[i][j].elevation = 0; }
-					if(map[i][j].heat < .125){
-						if(map[i][j].type == 'r' || map[i][j].type == 'w'){
-							map[i][j].type = 'e';
-						}
-						else {
-							map[i][j].type = 'n';
-						}
-					}
-				}
-			}
-			slap(500, 'd', 's', 2, 2);
-			slap(50, 's', 'g', 2, 3);
-			slap(50, 'e', 'w', 2, 4);
-			slap(5, 'w', 'e', 2, 5);
-			
-		}
-		function forest(treeCount, forestsNumber){
-			var arbs = treeCount;
-			var forestsC = forestsNumber;
-			var ranX = Math.floor(Math.random() * MAPSIZE);
-			var ranY = Math.floor(Math.random() * MAPSIZE);
-			var dir = Math.floor(Math.random() * 4);
-			while(arbs > 0 && forestsC > 0){		
-				dir = Math.floor(Math.random() * 4);
-					if(dir == 0){
-						ranY--;
-						ranX--;
-					}
-					else if(dir == 1){
-						ranX--;
-						ranY++;
-					}
-					else if(dir == 2){
-						ranY++;
-						ranX++;
-					}
-					else if(dir == 3){
-						ranX++;
-						ranY--;
-					}
-					ranY = safeC(ranY);
-					ranX = safeC(ranX);
-				while(forestsC > 0 && (map[ranY][ranX].elevation < .05 || map[ranY][ranX].elevation > .6 || map[ranY][ranX].wetness < .1  ||  arbs == 1)){
-					ranX = Math.floor(Math.random() * MAPSIZE);
-					ranY = Math.floor(Math.random() * MAPSIZE);
-					arbs = treeCount;
-					forestsC--;
-				}
-				var chance = Math.round(Math.random() * 10);
-				if(chance < 8){
-					map[ranY][ranX].type = 'f';
-					map[ranY][ranX].travelQ = -1;
-				}
-				arbs--;
-			}
-		}
-		function cleanForests(){
-			var arbC = 0;
-			var considerations = [];
-			for(h = 0; h < 2; h++){
-				var i = h*(MAPSIZE-1);
-				while(i < MAPSIZE && i >= 0){
-					var j = h*(MAPSIZE-1);
-					while(j < MAPSIZE && j >= 0){
-						if(map[i][j].type != 'd' && map[i][j].elevation > 0){
-							arbC = 0;
-							for(a = -1; a < 2; a++){
-								for(b = -1; b < 2 ; b++){
-									if(map[safeC(a+i)][safeC(b+j)].type == 'f')
-									{
-										arbC++;
-									}
-								}
-							}
-							if(arbC > 2){
-								considerations.push([i, j]);
-							}
-						}
-						if(h == 0){ j++; } else { j--; }
-					}
-					if(h == 0){ i++; } else { i--; }
-				}
-				for(i = 0; i < considerations.length; i++){
-					map[considerations[i][0]][considerations[i][1]].type = 'f'; 
-				}
-			}
-		}
-		function mountain(rSize, rNum){
-			var yC = Math.floor(Math.random() * MAPSIZE);
-			var xC = Math.floor(Math.random() * MAPSIZE);
-			var rS = 0;
-			var rN = 0;
-			var dir = 0;
-			var lastDir = -1;
-			while(rN < rNum)
-			{
-				if(rS == rSize)
-				{
-					rS = 0;
-					rN++;
-					yC = Math.floor(Math.random() * MAPSIZE);
-					xC = Math.floor(Math.random() * MAPSIZE);
-				}
-					do{
-						dir = Math.floor(Math.random()*8);
-					}while(dir == lastDir);
-					switch(dir){
-						case 0: yC--; xC--; break;
-						case 1: yC--; break;
-						case 2: yC--; xC++; break;
-						case 3: xC++; break;
-						case 4: yC++; xC++; break;
-						case 5: yC++; break;
-						case 6: yC++; xC--; break;
-						case 7: xC--; break;
-					}
-					yC = safeC(yC);
-					xC = safeC(xC);
-					if(map[yC][xC].type != 'w'){
-						if(rS == 0){
-							map[yC][xC].elevation = 1;
-							map[yC][xC].type = 'm';
-						}
-						else {
-							var max = 0;
-							for(a = -1; a < 2; a++){
-								for(b = -1; b < 2; b++){
-									if(map[safeC(yC+a)][safeC(xC+b)].elevation > max){
-										max = map[safeC(yC+a)][safeC(xC+b)].elevation;
-									}
-								}
-							}
-							var add = max + .005 - Math.random()*.01;
-							if(add > 1){ add = 1; }
-							map[yC][xC].elevation = add;
-							map[yC][xC].type = 'm';
-							if(dir < 4){
-								lastDir = dir + 4;
-							}
-							else{
-								lastDir = dir - 4;
-							}
-						}
-					}
-					else { rS = rSize-1; }
-				rS++;
-			}
-		}
-		function elevSpread(){
-			for(m = 0; m < 4; m++){
-				for(h = 0; h < 2; h++){
-					var i = h*(MAPSIZE-1);
-					while(i < MAPSIZE && i >= 0){
-						var j = h*(MAPSIZE-1);
-						while(j < MAPSIZE && j >= 0){
-							var add = 0;
-							var max = 0;
-							if(map[i][j].elevation > 0){
-								for(a = -1; a < 2; a++){
-									for(b = -1; b < 2; b++){
-										if(map[safeC(i+a)][safeC(j+b)].elevation > max){ max = map[safeC(i+a)][safeC(j+b)].elevation; }
-										add += map[safeC(i+a)][safeC(j+b)].elevation/8;
-									}
-									if(add <= 0){ map[i][j].elevation/=2; }
-									else if(map[i][j].elevation < max || map[i][j].elevation < .6){
-										if(max > .9){
-											map[i][j].elevation = max * (.65 + .3*Math.random());
-										}
-										else if(max > .8){
-											map[i][j].elevation = max * (.92 + Math.random()/20);
-										}
-										else if(max > .7){
-											map[i][j].elevation = max * (.7 + Math.random()/10);
-										}
-										else if(max > .6){
-											map[i][j].elevation = max * (.9 + Math.random()/10);
-										}
-										else if(max > .4){
-											map[i][j].elevation = max * (.5 + Math.round(Math.random()*20)/40);
-										}
-										else if(max > .25){
-											map[i][j].elevation = max * (.5 + Math.round(Math.random()*20)/36);
-										}
-										else if(max >= .1){
-											map[i][j].elevation = max * (.51 + Math.round(Math.random()*20)/36);
-										}
-										else {
-											map[i][j].elevation = max;
-										}
-									}
-								}
-							}
-							if(h==0){j++;} else {j--;}
-						}
-						if(h==0){i++;} else {i--;}
-					}
-				}
-			}
-		}
-		function currents(){
-			function makeCurrent(yC, xC){
-				var lastDir = -1;
-				var bannedDir = Math.floor(Math.random()*4);
-				var dir = -1;
-				var water = 100;
-				var y = safeC(yC);
-				var x = safeC(xC);
-				var cS = 0;
-				var limit = 60;
-				while(cS < limit && water > 0){
-					y = safeC(y);
-					x = safeC(x);
-					if(map[y][x].type == 'w'){
-						if(map[i][j].heat > .15){
-							water+=2.5;
-						}
-						else{ water-=10; }
-						cS++;
-					}
-					else{
-						water -= 1.25*map[y][x].elevation;
-						water -= .05/map[y][x].heat;
-						map[y][x].wetness += .05 + map[y][x].elevation/16;
-						map[y][x].heat += .02;
-					}
-					do{
-						dir = Math.floor(Math.random()*4);
-					}while(dir == lastDir || dir == bannedDir);
-					if(dir == 0){ y--; lastDir = 2;}
-					else if(dir == 1){ x++; lastDir = 3;}
-					else if(dir == 2){ y++; lastDir = 0;}
-					else if(dir == 3){ x--;  lastDir = 1;}
-				}
-			}
-			for(var i = 0; i < MAPSIZE; i+=2){
-				for(var j = 0; j < MAPSIZE; j+=2){
-					if(map[i][j].type == 'w'){
-						makeCurrent(i, j);
-					}
-				}
-			}
-		}
-		function rivers(){
-			var id = 0;
-			function makeRiver(yC, xC){
-				var spot = new Array(2);
-				var interval = Math.ceil(Math.random() * 100);
-				var dirToSea = -1;
-				var stack = [];
-				var stop = false;
-				stack.push([yC, xC]);
-				var lastDir = -1;
-				var bannedDir = -1;
-				var rS = 0;
-				while(stack.length > 0 && !stop){
-					spot = stack.pop();
-					var y = safeC(spot[0]);
-					var x = safeC(spot[1]);
-					if(map[y][x].type != 'w'){
-						var min = map[y][x].elevation + .2;
-						if(rS > 0){
-							map[y][x].type = 'r';
-							map[y][x].id = id;
-							map[y][x].elevation = -.1;
-							for(a = -1; a < 2; a++){
-								for(b = -1; b < 2; b++){
-									map[safeC(y+a)][safeC(x+b)].wetness += .25;
-								}
-							}
-						}
-						var minDir = -1;
-						if(map[safeC(y - 1)][x].elevation < min && lastDir != 0 && bannedDir != 0 && map[safeC(y - 1)][x].id != id){
-							min = map[safeC(y - 1)][x].elevation;
-							minDir = 0;
-						}
-						if(map[y][safeC(1+x)].elevation < min && lastDir != 1 && bannedDir != 1 && map[y][safeC(1+x)].id != id){
-							min = map[y][safeC(1+x)].elevation;
-							minDir = 1;
-						}
-						if(map[safeC(y + 1)][x].elevation < min && lastDir != 2 && bannedDir != 2 && map[safeC(y + 1)][x].id != id){
-							min = map[safeC(y + 1)][x].elevation;
-							minDir = 2;
-						}
-						if(map[y][safeC(x-1)].elevation < min && lastDir != 3 && bannedDir != 3 && map[y][safeC(x-1)].id != id){
-							min = map[y][safeC(x-1)].elevation;
-							minDir = 3;
-						}
-						if(min > 0){
-							if(minDir == 0){ stack.push([y-1, x]); }
-							else if(minDir == 1){ stack.push([y, x+1]); }
-							else if(minDir == 2){ stack.push([y+1, x]); }
-							else if(minDir == 3){ stack.push([y, x-1]); }
-							else{ stop = true; }
-							if(minDir < 2){ lastDir = minDir+2;} else { lastDir = minDir -2; }
-							if(rS%interval == 0){
-								var counting = 0;
-								while(dirToSea == -1 && counting < 1000){
-									if(map[safeC(y-counting)][x].type == 'w')
-										dirToSea = 0;
-									else if(map[y][safeC(x+counting)].type == 'w')
-										dirToSea = 1;
-									else if(map[safeC(y+counting)][x].type == 'w')
-										dirToSea = 2;
-									else if(map[y][safeC(x-counting)].type == 'w')
-										dirToSea = 3;
-									counting++;
-								}
-								if(counting == 1000){
-									stop = true;
-								}
-								else{
-									if(dirToSea < 2){ bannedDir = dirToSea + 2; }
-									else { bannedDir = dirToSea - 2; }
-								}
-							}
-						}
-						else { stop = true; }
-					}
-					else { stop = true; }
-					rS++;
-				}
-			}
-			for(var i = 0; i < MAPSIZE; i+=50){
-				for(var j = 0; j < MAPSIZE; j+=50){
-					if(map[i][j].elevation < .6 && map[i][j].wetness >= .35){
-						makeRiver(i, j);
-						id++;
-					}
-				}
-			}
-		}
-		function safeC(a)
-		{
-			if(a >= MAPSIZE){
-				return a%MAPSIZE;
-			}
-			else if(a < 0){
-				return safeC(a+MAPSIZE);
-			}
-			return a;
-		}
-		function genOceans(oceanSize, numOceans)
-		{
-			var oS = oceanSize;
-			var nO = numOceans;
-			var dir = 0;
-			var lastDir = 0;
-			var yCoord = Math.floor(Math.random() * MAPSIZE);
-			var xCoord = Math.floor(Math.random() * MAPSIZE);
-			while(oS > 0 && nO > 0)
-			{
-				if(oS == 1)
-				{
-					oS = oceanSize; //Ocean size is too small, go to new location to begin making ocean
-					yCoord = Math.floor(Math.random() * MAPSIZE);
-					xCoord = Math.floor(Math.random() * MAPSIZE);
-					nO--;
-				}
-				else
-				{
-					yCoord = safeC(yCoord);
-					xCoord = safeC(xCoord);
-					map[yCoord][xCoord].type = 'w';
-					map[yCoord][xCoord].wetness = 0;
-					map[yCoord][xCoord].elevation = -1;
-					do{
-						dir = Math.floor(Math.random()*4);
-					}while(dir == lastDir);
-					if(dir == 0){ yCoord++; }
-					else if(dir == 1){ xCoord++; }
-					else if(dir == 2){ yCoord--; }
-					else { xCoord--; }
-					if(lastDir < 2){ lastDir = dir + 2} else { lastDir = dir - 2; } //Asign Last Dir
-					oS--;
-				}
-			}
-		}
-		function slap(size, typeDetect, typeMake, elevChange, nind){
-			var ind = 0;
-			var counter = 0;
-			var stack = [];
-			var continents = [];
-			function checkValidity(y, x, checking){
-				var a = map[safeC(y)][safeC(x)];
-				return (a.checked != nind || !checking) && a.type == typeDetect;
-			}
-			function slapInner(yC, xC, checking){
-				var spot = new Array(2);
-				stack.push([yC, xC]);
-				while(stack.length > 0){
-					counter++;
-					spot = stack.pop();
-					y = safeC(spot[0]);
-					x = safeC(spot[1]);
-					if(checking){ map[y][x].checked = nind; }
-					else { 
-						map[y][x].type = typeMake; 
-						if(elevChange != 2){
-							map[y][x].elevation = elevChange;
-						}
-					}	
-					if(checkValidity(y+1, x, checking)){
-						stack.push([y+1, x]);
-					}
-					if(checkValidity(y, x+1, checking)){
-						stack.push([y, x+1]);
-					}
-					if(checkValidity(y-1, x, checking)){
-						stack.push([y-1, x]);
-					}
-					if(checkValidity(y, x-1, checking)){
-						stack.push([y, x-1]);
-					}
-				}
-			}
-			for(i = 0; i < MAPSIZE; i++){
-				for(j = 0; j < MAPSIZE; j++){
-					if(checkValidity(i, j, true)){
-						counter = 0;
-						slapInner(i, j, true);
-						ind++;
-						if(counter < size){
-							ind--;
-							slapInner(i, j, false);
-						}
-						else{
-							continents[ind] = counter;
-						}
-					}
-				}
-			}
-			return continents;
-		}
-		var tileWidth = 14;
-		var tileHeight = 7;
-		function drawITile(x, y, color){
-			var startX = c.offsetWidth/2+(x-y)*tileWidth/2;
-			var startY = 1200+((x+y)*tileHeight/2);
-			ctx.fillStyle = color;
-			ctx.beginPath();
-			ctx.moveTo(startX, startY);
-			ctx.lineTo(startX + tileWidth/2, startY + tileHeight/2); //Right Corner
-			ctx.lineTo(startX, startY + tileHeight); //Bottom Corner
-			ctx.lineTo(startX - tileWidth/2, startY + tileHeight/2); //Left Corner
-			ctx.lineTo(startX, startY); //Top SCorner
-			ctx.closePath();
-			ctx.fill();
-		}
-		function drawBlock(x, y, z, type) {
-			var top, right, left;
-			right = "#cccccc";
-			left = "#999999";
-			switch(type){
-				case 'w': top = "blue"; left = "rgb(0, 106, 220)"; right = "blue"; break;
-				case 'r': left = "rgb(0, 106, 220)"; right = "rgb(0, 106, 220)";top = "rgb(0, 106, 220)"; break;
-				case 'g': left = "#36a165"; right = "#4FBA7F"; top = "mediumseagreen"; break;
-				case 's': top = "lightgreen";left = "#82d882"; right = "#9aef9a"; break; 
-				case 'd': top = "tan";left = "#bea37f"; right = "#d6ba96"; break; 
-				case 'c': top = "tan";left = "#bea37f"; right = "#d6ba96"; break; 
-				case 'h': top = "olivedrab"; left = "#56721C"; right = "#89A54F"; break; 
-				case 'm': top = "#B4B4B4"; left = "#909090"; right = "#C3C3C3"; break;
-				case 'i': top = "#36a165"; left = "#2B8151"; right = "#5EB484"; break;
-				case 'f': top = "#005000"; left = "#004000"; right = "#337333"; break;
-				case 'l': top = "grey"; left = "#666666"; break;
-				case 'e': top = "#E9FFFF"; left = "#EDFFFF"; right = "#E9FFFF"; break; //ice
-				case 'n': top = "#EFFCFF";left = "#BFCACC"; right = "#F2FDFF"; break; //snow 
-				default:  top = "red"; break;
-			}
-			
-			var startX = c.offsetWidth/2+(x-y)*tileWidth/2
-			var startY = 60+(x+y)*tileHeight/2
-			
-			// draw top
-			ctx.beginPath();
-			ctx.moveTo(startX, startY+( -z * tileHeight));
-			ctx.lineTo(startX +(tileWidth / 2),startY + (tileHeight / 2 - z * tileHeight));
-			ctx.lineTo(startX,startY + (tileHeight - z * tileHeight));
-			ctx.lineTo(startX-(tileWidth / 2),startY + (tileHeight / 2 - z * tileHeight));
-			ctx.closePath();
-			ctx.fillStyle = top;
-			ctx.fill();
-
-			// draw left
-			ctx.beginPath();
-			ctx.moveTo(startX-(tileWidth / 2),startY+(tileHeight/ 2 - z * tileHeight));
-			ctx.lineTo(startX,startY+(tileHeight - z * tileHeight));
-			ctx.lineTo(startX,startY+(tileHeight));
-			ctx.lineTo(startX-(tileWidth / 2),startY+(tileHeight / 2));
-			ctx.closePath();
-			ctx.fillStyle = left;
-			ctx.fill();
-
-			// draw right
-			ctx.beginPath();
-			ctx.moveTo(startX+(tileWidth / 2),startY+(tileHeight / 2 - z * tileHeight));
-			ctx.lineTo(startX,startY+(tileHeight - z * tileHeight));
-			ctx.lineTo(startX,startY+(tileHeight));
-			ctx.lineTo(startX+(tileWidth / 2),startY+(tileHeight / 2));
-			ctx.closePath();
-			ctx.fillStyle = right;
-			ctx.fill();		
-		}
-		function drawIsoMap()
-		{
-			setMapDSize(1200, 700);
-			for(i = 0; i < Math.floor(1200/tileWidth); i++){
-				for(j = 0; j < Math.floor(1200/tileWidth); j++){
-					var yLook = safeC(i + p.yView);
-					var xLook = safeC(j + p.xView);
-					drawBlock(j, i, 10*map[safeC(i + p.yView)][safeC(j + p.xView)].elevation,map[yLook][xLook].type );
-				}
+				map[i][j].heat = (1.85 - Math.abs(MAPSIZE/2 - i)/(MAPSIZE/4))  + Math.random() * .15;
 			}
 		}
 		function mapV(event){ //left
 			if(event.keyCode == 37){
-				p.xView--;
-				p.yView++;
+				p.xView = safeC(--p.xView);
 				drawDelta = true;	
 			}
 			else if(event.keyCode == 38){ //up
-				p.yView--;
-				p.xView--;
+				p.yView = safeC(--p.yView);
 				drawDelta = true;
 			}
 			else if(event.keyCode == 39){ //right
-				p.xView++;
-				p.yView--;
+				p.xView = safeC(++p.xView);
 				drawDelta = true;
 			}
 			else if(event.keyCode == 40){ //down
-				p.yView++;
-				p.xView++;
+				p.yView = safeC(++p.yView);
 				drawDelta = true;
 			}
 			else if(event.keyCode == 90){
-				if(p.zoom < 20){
+				if(p.zoom < 45){
 					p.zoom++;
-					while((900 % p.zoom != 0 || 720 % p.zoom != 0) && p.zoom < 45){
+					while((c.height % p.zoom != 0 || c.width % p.zoom != 0) && p.zoom < 45){
 						p.zoom++;
-					}
-					if(tileSelected.length == 2){
-						p.yView = Math.round(safeC(tileSelected[0] - 720/(2*p.zoom)));
-						p.xView = Math.round(safeC(tileSelected[1] - 900/(2*p.zoom)));
 					}
 					drawDelta = true;
 				}
-				tileWidth = p.zoom*2;
-				tileHeight = p.zoom;
 			}
 			else if(event.keyCode == 88){
 				if(p.zoom > 2){
 					p.zoom--;
-					while((900 % p.zoom != 0 || 720 % p.zoom != 0) && p.zoom > 4){
+					while((c.height % p.zoom != 0 || c.width % p.zoom != 0) && p.zoom > 4){
 						p.zoom--;
-					}
-					if(tileSelected.length == 2){
-						p.yView = Math.round(safeC(tileSelected[0] - 720/(2*p.zoom)));
-						p.xView = Math.round(safeC(tileSelected[1] - 900/(2*p.zoom)));
 					}
 					drawDelta = true;
 				}
-				tileWidth = p.zoom*2;
-				tileHeight = p.zoom;
+			}
+			else if(event.keyCode == 67){
+				drawCoasts = !drawCoasts;
+				drawDelta = true;
 			}
 			else { drawDelta = false; }
 		}
@@ -1034,7 +95,7 @@
 				if(!canClaim){
 					for(a = -1; a < 2; a++){
 						for(b = -1; b < 2; b++){
-							if(map[safeC(y+a)][safeC(x+b)].owner == p.turn){
+							if(map[safeC(y+a)][safeC(x+b)].pass > -1 && map[safeC(y+a)][safeC(x+b)].owner == p.turn){
 								canClaim = true; a = 2; b = 2;
 							}
 						}
@@ -1045,6 +106,13 @@
 					p.resources.manpower--;
 					map[y][x].owner = p.turn;
 					p.size++;
+					p.territory.push([y, x]);
+					if(p.size == 1){
+						start = true;
+					}
+					if(map[y][x].building[0] != -1){
+						map[y][x].building.effect();
+					}
 					drawTile(y, x);
 					if(map[safeC(y + 1)][x].owner == p.turn){ drawTile(y+1, x); }
 					if(map[safeC(y - 1)][x].owner == p.turn){ drawTile(y-1, x); }
@@ -1063,241 +131,126 @@
 			if(e){
 				var x = safeC(p.xView + Math.floor((e.clientX - c.getBoundingClientRect().x)/(p.zoom)));
 				var y = safeC(p.yView + Math.floor((e.clientY - c.getBoundingClientRect().y)/(p.zoom)));
-				var tY = y;
-				var tX = x;
-				if(tileSelected.length == 2){
-					tY = tileSelected[0];
-					tX = tileSelected[1];
-				}
-				tileSelected = [y, x];
-				drawTile(y, x);
-				if(tY != y || tX != x){
-					drawTile(tY, tX);
-				}
-				delta = true;
-				if(p.action != ""){
-					if(p.action == "claiming" && p.resources.manpower > 1){
-						if(e.shiftKey){
-							c.addEventListener('mousemove', claim);
-							c.addEventListener('mouseup', claim);
-							claim(0, y, x);
-						}
-						else{
-							claim(0, y, x);
-						}
+				if(x > 0 && y > 0 && x < e.clientX < c.width && e.clientY < c.height){
+					var tY = y;
+					var tX = x;
+					if(tileSelected.length == 2){
+						tY = tileSelected[0];
+						tX = tileSelected[1];
 					}
-					else if(map[y][x].owner == p.turn){
-						if(p.action == "road" && p.resources.manpower > 2){
-							if(map[y][x].travelQ == 0){
-								p.resources.manpower -= 2;
-								map[y][x].travelQ++;
+					tileSelected = [y, x];
+					drawTile(y, x);
+					if(tY != y || tX != x){
+						drawTile(tY, tX);
+					}
+					delta = true;
+					if(p.action != ""){
+						if(p.action == "claiming" && p.resources.manpower > 1){
+							if(e.shiftKey){
+								c.addEventListener('mousemove', claim);
+								c.addEventListener('mouseup', claim);
+								claim(0, y, x);
+							}
+							else{
+								claim(0, y, x);
 							}
 						}
-						else if((p.action == "digging" || (p.resources.dirt > 0 && p.action == "filling")) && p.resources.manpower >= 5){
-							p.resources.manpower -= 5;
-							if(p.action == "filling" && map[y][x].elevation < .5){
-								p.resources.dirt--;
-								map[y][x].elevation += .01;
-								if(map[y][x].elevation > 0){
-									if(map[y][x].type == 'w' || map[y][x].type == 'r'){
-										map[y][x].type = 'g';
-									}
-									if(map[y][x].elevation > .2){
-										map[y][x].type = 'i';
-									}
-									if(map[y][x].elevation > .4){
-										map[y][x].type = 'h';
-									}
+						else if(map[y][x].owner == p.turn){
+							if(p.action == "road" && p.resources.manpower > 2){
+								if(map[y][x].travelQ == 0){
+									p.resources.manpower -= 2;
+									map[y][x].travelQ++;
 								}
 							}
-							else if(map[y][x].elevation > -1.1){
-								if(map[y][x].elevation <= 0){
-									p.resources.sand++;
-									map[y][x].elevation -= .01;
+							else if((p.action == "digging" || (p.resources.dirt > 0 && p.action == "filling")) && p.resources.manpower >= 5){
+								p.resources.manpower -= 5;
+								if(p.action == "filling" && map[y][x].elevation < .5){
+									p.resources.dirt--;
+									map[y][x].elevation += .01;
+									if(map[y][x].elevation > 0){
+										if(map[y][x].type == 'w' || map[y][x].type == 'r'){
+											map[y][x].type = 'g';
+										}
+										if(map[y][x].elevation > .2){
+											map[y][x].type = 'i';
+										}
+										if(map[y][x].elevation > .4){
+											map[y][x].type = 'h';
+										}
+									}
 								}
-								else{
-									if(map[y][x].type == 'c' || map[y][x].type == 'd'){
+								else if(map[y][x].elevation > -1.1){
+									if(map[y][x].elevation <= 0){
 										p.resources.sand++;
+										map[y][x].elevation -= .01;
 									}
 									else{
-										p.resources.dirt++;
-									}
-									map[y][x].elevation -= .01;
-									if(map[y][x].elevation <= 0 && map[y][x].wetness > 0){
-										map[y][x].type = 'w';
-									}
-									else {
-										map[y][x].type = 'p';
+										if(map[y][x].type == 'c' || map[y][x].type == 'd'){
+											p.resources.sand++;
+										}
+										else{
+											p.resources.dirt++;
+										}
+										map[y][x].elevation -= .01;
+										if(map[y][x].elevation <= 0 && map[y][x].wetness > 0){
+											map[y][x].type = 'w';
+										}
+										else {
+											map[y][x].type = 'p';
+										}
 									}
 								}
 							}
-						}
-						else if(p.action == "clearing" && p.resources.manpower >= 2){
-							if(map[y][x].type == 'f'){
-								p.resources.manpower -= 2;
-								p.resources.wood++;
-								if(map[y][x].wetness == 0){
-									map[y][x].type = 's';
+							else if(p.action == "clearing" && p.resources.manpower >= 2){
+								if(map[y][x].type == 'f'){
+									p.resources.manpower -= 2;
+									p.dom.income.wood -= .1;
+									p.dom.income.food -= 1;
+									p.resources.wood+=4;
+									if(map[y][x].wetness == 0){
+										map[y][x].type = 's';
+									}
+									else if(map[y][x].elevation >= .6){
+										map[y][x].type = 'h';
+									}
+									else if(map[y][x].elevation > .175){
+										map[y][x].type = 'i';
+									}
+									else { map[y][x].type = 'g'; }
+									drawTile(y, x);
 								}
-								else if(map[y][x].elevation >= .6){
-									map[y][x].type = 'h';
-								}
-								else if(map[y][x].elevation > .175){
-									map[y][x].type = 'i';
-								}
-								else { map[y][x].type = 'g'; }
-								drawTile(y, x);
+								
 							}
-							
-						}
-						else if(p.action == "managing"){
-							if(p.citInd != -1 && map[y][x].city == -1){
-								map[y][x].city = p.citInd;
-								p.cities[p.citInd].size++;
-								drawTile(y, x);
+							else if(p.action == "managing"){
+								if(p.citInd != -1 && map[y][x].city == -1){
+									map[y][x].city = p.citInd;
+									p.cities[p.citInd].size++;
+									drawTile(y, x);
+								}
 							}
-						}
-						else{
-							p.action = "managing";
 						}
 					}
 				}
 			}
 		}
-		function drawMenus(){
-			var rect = r.getBoundingClientRect();
-			rtx.fillStyle = "#F2F4F4";
-			rtx.fillRect(0, 0, rect.width, 60);
-			rtx.fillRect(0, rect.height - 60, rect.width, 60);
-			rtx.fillStyle = "black";
-			rtx.font = "16px Courier";
-			rtx.fillText("Buildings", 2, 40);
-			rtx.fillText("Provinces", 98, 40);
-			rtx.fillText("Estates", 203, 40);
-			rtx.fillText("Court", 289, 40);
-			rtx.fillText("Cities", 360, 40);
-			rtx.fillText("Character", 2, rect.height - 20);
-			rtx.fillText("Military", 100, rect.height - 20);
-			rtx.fillText("Selected", 185, rect.height - 20);
-			rtx.fillText("Summary", 275, rect.height - 20);
-		}
-		//drawMenus();
-		function drawTextBox(x, y, str, can, fontSize){
-			var strLen = str.length;
-			can.font = ""+fontSize+"px Arial";
-			can.strokeStyle = "black";
-			can.strokeRect(x, y, .5*fontSize*strLen, 1.2*fontSize);
-			can.fillText(str, x+1, y+fontSize);
-		}
-		var establishing = false;
-		function drawRightBar(e){ //Handles Right Menus. Menu interfacing is handled by p.menView[]. p.menView[0] -> what tab to view; other spots store subdata for the tab
-			var rect = r.getBoundingClientRect();
-			if(e!=0 && e.type == 'mousedown'){
-				var y = e.clientY;
-				var x = e.clientX - rect.left;
-			}
-			if(y < 60){
-				tab = Math.floor(5*x/rect.width);
-			}
-			else if(y > rect.height-60){
-				tab = 5+Math.floor(5*x/rect.width);
-			}
-			rtx.clearRect(0, 60, rect.width, rect.height - 120);
-			switch(p.menView[0]){
-				case 0: //Buildings
-					if(tileSelected.length == 2){
-						var yS = tileSelected[0];
-						var xS = tileSelected[1];
-						switch(p.menView[1]){
-							case -1: break;
-							case 0: break;
-							case 1: break;
-							case 2: break;
-							case 3: break;
-							case 4: break;
-							default: p.menView[1] = -1; delta = true; break;
-						}
-					}
-					break;
-				case 1: //Cities
-					rtx.font = "20px Arial";
-					rtx.fillStyle = "black";
-					if(!establishing){
-						rtx.fillText("Establish Settlement", 20, 120);
-						rtx.strokeRect(18, 95, 200, 30);
-						rtx.strokeRect(15, 150, rect.width - 30, rect.height - 300);
-						rtx.strokeRect(15, 150, rect.width - 30, 30);
-						for(j = 0; j < Math.min(8, p.cities.length); j++){
-							rtx.font = "19px Courier";
-							rtx.strokeStyle = "black";
-							rtx.strokeRect(15, 180 + (75 * j), r.width-30, 75);
-							rtx.strokeStyle = "black"
-							rtx.fillStyle = "black";
-							rtx.font = "20px Calibri";
-							rtx.fillText(p.cities[j].name, 80, 220 + (j * 75));
-						}
-					}
-					if(e!=0){
-						if(e.type == 'mousedown'){
-							if(!establishing && y > 95 && y < 125 && x > 18 && x < 218){
-								establishing = true;
-								p.citInd = p.cities.length;
-								p.cities[p.citInd] = new City();
-								p.action = "managing";
-								document.addEventListener('keydown', drawRightBar);
-							}
-							else if(y > 500 && x > 0 && x < rect.width){
-								if(establishing){
-									document.removeEventListener('keydown', drawRightBar);
-									establishing = false;
-									p.citInd = -1;
-								}
-							}
-						}
-						else if(establishing && e.type == 'keydown'){
-							if(e.keyCode >= 65 && e.keyCode <= 90){
-								p.cities[p.citInd].name += e.key;
-							}
-							else if(e.keyCode == 8){
-								p.cities[p.citInd].name = p.cities[p.citInd].name.substring(0,p.cities[p.citInd].name.length-1);
-							}
-							else if(e.keyCode == 13){
-								document.removeEventListener('keydown', drawRightBar);
-							}
-						}
-					}
-					if(establishing){
-						rtx.clearRect(0, 60, rect.width, rect.height - 120);
-						rtx.fillText("City Name: ", 10, 120);
-						rtx.fillText(p.cities[p.citInd].name, 120, 120);
-						rtx.fillText("City Size: " + p.cities[p.citInd].size, 10, 180);
-						rtx.fillText("Finish", 10, 500);
-					}
-					break;
-				default:
-					rtx.fillText("Tab is Incomplete: " + tab, 50, 300); break;
-			}
-		}
-		function drawLeftBar(){
-			ltx.clearRect(0, 0, l.width, l.height);
-			ltx.font = "16px Arial";
-			ltx.fillText("Gold: " + Math.floor(p.resources.gold), 5, 320);
-			ltx.fillText("Wood: " + Math.floor(p.resources.wood), 5, 340);
-			ltx.fillText("Stone: " + Math.floor(p.resources.stone),5 , 360);
-			ltx.fillText("Manpower: " + Math.floor(p.resources.manpower), 5, 520);
-			ltx.fillText("Population: " + Math.floor(p.resources.population), 5, 540);
-		}
 		genWorld();
-		//drawEntireMap();
-		//drawElevationMap();
-		for(i = 0; i < MAPSIZE; i++){ for(j = 0; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ p.yView = i; p.xView = j; i = MAPSIZE; j = i; }}}
-		var tz = performance.now();
+		for(i = 100; i < MAPSIZE; i++){ for(j = 100; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ p.yView = i; p.xView = j; i = MAPSIZE; j = i; }}} //Make sure view is on grass
+		var t = 0;
 		setInterval(function(){
+			if(start){
+				t++;
+			}
+			if(t==2500){
+				scanRoads();
+				rIncome();
+				t = 0;
+				delta = true;
+			}
 			document.addEventListener('keydown', mapV);
 			c.addEventListener('mousedown', handleMapClick);
 			r.addEventListener('mousedown', drawRightBar);
 			if(drawDelta){
-				drawIsoMap();
+				drawMap();
 				drawDelta = false;
 			}
 			if(delta){

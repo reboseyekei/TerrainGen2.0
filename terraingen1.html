@@ -1,0 +1,3397 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<canvas id = "leftbar" width = "300" height = "700" style = "position: absolute; left: 5px; top: 5px; border: 1px solid black;"></canvas>
+	<canvas id = "world" width="840" height="700" style = "position: absolute; left: 310px; top: 5px; width: 840px; height: 700px; border: 1px solid black;"></canvas>
+	<canvas id = "rightbar" width = "360" height = "700" style = "position: absolute; left: 1155px; top: 5px; border: 1px solid black;"></canvas>
+</head>
+<body>
+<script src = "/socket.io/socket.io.js"></script>
+<script>
+	document.addEventListener("contextmenu", function(e){
+		e.preventDefault();
+		}, false);
+	var enColors = [];
+	var l = document.getElementById("leftbar");
+	var ltx = l.getContext("2d");
+	var r = document.getElementById("rightbar");
+	var rtx = r.getContext("2d");
+	var c = document.getElementById("world");
+	var ctx = c.getContext("2d");
+	var scale = window.devicePixelRatio;
+	c.style.width = "" + c.width + "px";
+	c.style.height = "" + c.height + "px";	
+	c.width = c.width * scale;
+	c.height = c.height * scale;
+	l.style.width = "" + l.width + "px";
+	l.style.height = "" + l.height + "px";	
+	l.width = l.width * scale;
+	l.height = l.height * scale;
+	r.style.width = "" + r.width + "px";
+	r.style.height = "" + r.height + "px";	
+	r.width = r.width * scale;
+	r.height = r.height * scale;
+	rtx.scale(scale, scale);
+	ctx.scale(scale, scale);
+	ltx.scale(scale, scale);
+	function Decision(name, description){
+		this.name = name;
+		this.condition;
+		this.description = description;
+		this.effect;
+		this.type;
+	}
+	function City(){
+		this.resources = [0, 0, 0, 0, 0, 0]; //Wood, stone, gold, ore, manpower, sailors
+		this.claim = -1;
+		this.defense = 20;
+		this.loyalty = 100;
+		this.garrison = [];
+		this.y;
+		this.x;
+		this.mayor;
+		this.size;
+		this.wealth = 1;
+		this.capital = false;
+		this.buildings = [[0], [0, 0, 0, 0], [0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0], [0, 0, 0, 0]];
+	}
+	var brushType = "grass";
+	var brushSize = 0;
+	var brushSize = 0;
+	var pattern = "straight"
+	var view = "";
+	var vew = "";
+	function Player(){
+		this.custom = [];
+		this.estates = [];
+		this.market = false;
+		this.taxChange = false;
+		this.army = [];
+		this.territory = [];
+		this.ruler = [];
+		this.court = [];
+		this.provSize = 0;
+		this.provinces = [];
+		this.cities = [];
+		this.tileSelected = 0;
+		this.provinceSelected = -1;
+		this.ableDecisions = [];
+		this.capital = 0;
+		this.governmentType = "small";
+		this.resources = [400,100,1000,0,500,0,1000000]; //wood, stone, gold, ore, manpower, sailors, population
+		this.incomes = [0,0,0,0,0,0,0]; //wood, stone, gold, ore, manpower, sailors, population
+		this.taxes = [50, 50, 50, 50]; //wood, stone, gold
+		this.size = 0;
+		this.baseSize = 9999999;
+		this.yView = 50;	
+		this.xView = 0;
+		this.numCities = 0;
+		this.development = 0;
+		this.basePopulation = 150;
+		this.sizeLimit = function(){ 
+			if(this.governmentType == "small"){
+				return this.baseSize + 2 + this.numCities * 5;
+			}
+			if(this.governmentType == "medium"){
+				return this.baseSize + 20 + this.numCities * 15;
+			}
+			if(this.governmentType == "nomad"){
+				return this.baseSize + this.resources[6] + this.numCities * 5;
+			}
+			return this.baseSize + 200 + this.numCities * 45;
+		};
+		this.maxPopulation = function(){if(this.governmentType != "nomad"){return this.basePopulation + ((this.development * 2 + this.size * 2) + this.sizeLimit() - this.provSize)} else{ return this.resources[6] * 5}};
+		this.economicEfficiency = function(){ return Math.min(50, (5/(this.size+1)) + .5 * (this.development/(2 * this.size + 1 - this.provSize)) * (.6 + .4 *(this.resources[6] + this.resources[4])/(1,5 * this.maxPopulation() - 100)));}
+		this.trades = [];
+		this.wellBeing = [(30 + Math.floor(Math.random() * 70)), 0 - Math.floor(Math.random() * 50), Math.floor(Math.random() * 30), 0] //
+		this.action = "claiming";
+		this.events = [];
+		this.hasManufactory = false;
+		this.baseSupplyLimit = 10;
+		this.supplyLimit = function(){ if(this.governmentType == "nomad"){ return this.resources[6]/2 } else { return this.size/11 + this.baseSupplyLimit; }}
+		this.maxProvinces = function(){ return 2 + Math.floor(this.size/50) };
+	}
+	function Tile(){
+		this.annexed = 1;
+		this.occupied = -1;
+		this.province = -1;
+		this.manufactory = 0;
+		this.mine = 0;
+		this.armies = [];
+		this.farm = 0;
+		this.y = -1;
+		this.x = -1;
+		this.owner = -1;
+		this.garrison = 0;
+		this.development = 1;
+		this.city = 0;	
+		this.grass = 1;
+		this.forest = 0;
+		this.water = 0;
+		this.hill = 0;
+		this.snow = 0;	
+		this.mountain = 0;
+		this.desert = 0;
+		this.selected = false;
+		this.wall = 0;
+		this.selected = false;
+	}
+	function Province(){
+		this.tiles = [1, -1, -1, -1];
+		this.agressive = false;
+		this.resources = [0, 0, 0];
+		this.governor = [];
+		this.manpower = 50;
+		this.territory = [];
+		this.id = 0;
+		this.edict = "expand";
+	}
+	var tSelected = -1;
+	var sel = -1;
+	var player = new Player();
+	var turn = 0;
+	var socket = io();
+	var map = [[]];
+	var overlay = [[]];
+	function Building(){
+		this.cost = [0,0,0,0];//Wood, stone, gold, manpower
+		this.name = "";
+		this.description = "";
+		this.effect;
+		this.type;
+	}
+	function Weapon(){
+		this.cost = [.1,0];
+		this.name = "";
+		this.attack = 0;
+		this.defense = 0;
+		this.range = 0;
+		this.hands = 1;
+	}
+	var weapons = [];
+	var infWeapons = [];
+	var archWeapons = [];
+	var cavWeapons = [];
+	infWeapons[0] = new Weapon(); infWeapons[1] = new Weapon();infWeapons[2] = new Weapon(); 	infWeapons[3] = new Weapon(); infWeapons[4] = new Weapon(); infWeapons[5] = new Weapon(); 
+	infWeapons[0].name = "Spear";
+	infWeapons[0].attack = 4;
+	infWeapons[0].defense = 8;
+	infWeapons[0].range = 3;
+	infWeapons[0].hands = 2;
+	infWeapons[0].cost = [.25, 0];
+	 
+	infWeapons[1].name = "Axe";
+	infWeapons[1].attack = 5;
+	infWeapons[1].defense = 1;
+	infWeapons[1].range = 1;
+	infWeapons[1].cost = [.05, .25];
+	 
+	
+	infWeapons[2].name = "Sword";
+	infWeapons[2].attack = 3;
+	infWeapons[2].defense = 3;
+	infWeapons[2].range = 2;
+	infWeapons[2].cost = [.05, .25];
+	 
+
+	infWeapons[3].name = "Javelin";
+	infWeapons[3].attack = 2;
+	infWeapons[3].defense = 0;
+	infWeapons[3].range = 4;
+	infWeapons[3].cost = [.1, 0];
+	 
+	
+	infWeapons[4].name = "Shield";
+	infWeapons[4].attack = 0;
+	infWeapons[4].defense = 3;
+	infWeapons[4].range = 8;
+	infWeapons[4].cost = [.1, 0];
+	
+	infWeapons[5].name = "Halberd";
+	infWeapons[5].attack = 8;
+	infWeapons[5].defense = 4;
+	infWeapons[5].range = 3;
+	infWeapons[5].hands = 2;
+	infWeapons[5].cost = [.2, .25];
+	 
+	archWeapons[0] = new Weapon(); archWeapons[1] = new Weapon(); archWeapons[2] = new Weapon(); archWeapons[3] = new Weapon(); archWeapons[4] = new Weapon();
+	archWeapons[0].name = "Greatbow";
+	archWeapons[0].attack = 4;
+	archWeapons[0].range = 8; //6.25 = 25dmg
+	archWeapons[0].hands = 2;
+	archWeapons[1].name = "Sling";
+	archWeapons[1].attack = 3; //3.75 = 11.25
+	archWeapons[1].range = 4; 
+	archWeapons[2].name = "Halfbow"
+	archWeapons[2].attack = 2;
+	archWeapons[2].range = 7; //6 = 12 dmg
+	archWeapons[3].name = "Dagger"
+	archWeapons[3].attack = 0;
+	archWeapons[3].defense = 4;
+	archWeapons[3].range = 1;
+	archWeapons[4].name = "Shield";
+	archWeapons[4].attack = 0;
+	archWeapons[4].defense = 3;
+	archWeapons[4].range = 8;
+	
+	cavWeapons[0] = new Weapon(); cavWeapons[1] = new Weapon(); cavWeapons[2] = new Weapon(); cavWeapons[3] = new Weapon(); cavWeapons[4] = new Weapon();
+	cavWeapons[0].name = "Lance";
+	cavWeapons[0].attack = 15;
+	cavWeapons[0].range = 1;
+	cavWeapons[0].hands = 2;
+	cavWeapons[0].cost = [.2, .2]
+	cavWeapons[1].name = "Sword";
+	cavWeapons[1].attack = 2;
+	cavWeapons[1].defense = 3;
+	cavWeapons[1].range = 3;
+	cavWeapons[1].cost = [.1, .5]
+	cavWeapons[2].name = "Bow"
+	cavWeapons[2].attack = 2;
+	cavWeapons[2].defense = 4;
+	cavWeapons[2].hands = 2;
+	cavWeapons[2].range = 8;
+	cavWeapons[2].cost = [.1, .5]
+	cavWeapons[3].name = "Mace"
+	cavWeapons[3].attack = 6;
+	cavWeapons[3].range = 2;
+	cavWeapons[3].cost = [.1, .5]
+	cavWeapons[4].name = "Shield";
+	cavWeapons[4].attack = 0;
+	cavWeapons[4].defense = 3;
+	cavWeapons[4].range = 8;
+	cavWeapons[4].cost = [.2, 0]
+	weapons.push(infWeapons);
+	weapons.push(archWeapons);
+	weapons.push(cavWeapons);
+	var events = [];
+	var buildings = [[],[], [], [], []];
+	buildings[0][0] = new Building();
+	buildings[0][0].cost = [4,0,0,5];
+	buildings[0][0].name = "Town Office";
+	buildings[0][0].description = "Allows tax changes. +4 development. 4w 5m";
+	buildings[0][0].effect = function(){ player.development += 4; map[player.tileSelected.y][player.tileSelected.x].development += 4; player.taxChange = true; devChange();};
+	
+	buildings[1][0] = new Building();
+	buildings[1][0].cost = [0,4,0,5];
+	buildings[1][0].name = "Roads";
+	buildings[1][0].description = "+15 development. 4s 5m";
+	buildings[1][0].effect = function(){ player.development += 15; map[player.tileSelected.y][player.tileSelected.x].development += 15; devChange();};
+	//Town Farms, Bank, Market?, Granary, Warehouse, Workshops,
+	
+	buildings[1][1] = new Building();
+	buildings[1][1].cost = [4,0,0,5];
+	buildings[1][1].name = "Training Grounds";
+	buildings[1][1].description = "Allows Basic Unit Recruitment. 4w 5m";
+	buildings[1][1].effect = function(){ player.recruiting = true; };
+	//Barracks, Weaponsmith, Cavalry yard
+	
+	buildings[1][2] = new Building();
+	buildings[1][2].cost = [0,4,0,5];
+	buildings[1][2].name = "Statue";
+	buildings[1][2].description = "+15 popularity +5 dev. +4m income 4s 5m";
+	buildings[1][2].effect = function(){ player.development += 5; map[player.tileSelected.y][player.tileSelected.x].development += 5; player.wellBeing[0] += 15; devChange();};
+	//Tavern, Committees, Festival grounds, Temples, Schools
+	
+	buildings[1][3] = new Building();
+	buildings[1][3].cost = [0,0,0,15];
+	buildings[1][3].name = "Night Watch";
+	buildings[1][3].description = "+6m defense. +3 development 15m";
+	buildings[1][3].effect = function(){ map[player.tileSelected.y][player.tileSelected.x].city.defense += 6; player.development += 3; map[player.tileSelected.y][player.tileSelected.x].development += 3; devChange();};
+	//Palisade walls, Outer walls, Keep, Armory
+	
+	//Tier 2
+	buildings[2][0] = new Building();
+	buildings[2][0].cost = [4,0,0,5];
+	buildings[2][0].name = "Town Farms";
+	buildings[2][0].description = "+4 pop income +10 dev. 4w 5m";
+	buildings[2][0].effect = function(){map[player.tileSelected.y][player.tileSelected.x].development += 10; player.development += 10; devChange();};
+	
+	buildings[2][1] = new Building();
+	buildings[2][1].cost = [4,4,0,10];
+	buildings[2][1].name = "Shops";
+	buildings[2][1].description = "+15 development. +1g income 4w 4s 10m";
+	buildings[2][1].effect = function(){ map[player.tileSelected.y][player.tileSelected.x].development += 15; player.development += 15; };
+	
+	buildings[2][2] = new Building();
+	buildings[2][2].cost = [6,0,0,15];
+	buildings[2][2].name = "Barracks";
+	buildings[2][2].description = "Allows Infantry Customization. 6w 15m";
+	buildings[2][2].effect = function(){ player.custom.push("infantry"); };
+
+	buildings[2][3] = new Building();
+	buildings[2][3].cost = [6,4,0,5];
+	buildings[2][3].name = "Blacksmith";
+	buildings[2][3].description = "+5 Unit Points. 6w 4s 5m";
+	buildings[2][3].effect = function(){ player.custom.push("weapons"); };
+	
+	buildings[2][4] = new Building();
+	buildings[2][4].cost = [3,0,0,5];
+	buildings[2][4].name = "Town Plaza";
+	buildings[2][4].description = "+10 dev. 3w 5m";
+	buildings[2][4].effect = function(){map[player.tileSelected.y][player.tileSelected.x].development += 10; player.development += 10;};
+	
+	buildings[2][5] = new Building();
+	buildings[2][5].cost = [3,0,100,5];
+	buildings[2][5].name = "Merchant Committee";
+	buildings[2][5].description = "+5g gold income. 100g 8m";
+	buildings[2][5].effect = function(){player.wellBeing[0] += 5; };
+	
+	buildings[2][6] = new Building();
+	buildings[2][6].cost = [12,0,0,6];
+	buildings[2][6].name = "Low Walls";
+	buildings[2][6].description = "+15m def. 12w 6m";
+	buildings[2][6].effect = function(){ map[player.tileSelected.y][player.tileSelected.x].city.defense += 15; };
+	
+	buildings[2][7] = new Building();
+	buildings[2][7].cost = [8,6,0,10];
+	buildings[2][7].name = "Small Keep";
+	buildings[2][7].description = "+15m def.+15 popularity 8w 6s 10m";
+	buildings[2][7].effect = function(){ map[player.tileSelected.y][player.tileSelected.x].city.defense += 15; player.wellBeing[0] += 15; };
+	
+	//Tier 3
+	buildings[3][0] = new Building();buildings[3][1] = new Building();buildings[3][2] = new Building();buildings[3][3] = new Building();buildings[3][4] = new Building();buildings[3][5] = new Building();buildings[3][6] = new Building();buildings[3][7] = new Building();buildings[3][8] = new Building();buildings[3][9] = new Building();buildings[3][10] = new Building();buildings[3][11] = new Building();buildings[3][12] = new Building();buildings[3][13] = new Building();buildings[3][14] = new Building();buildings[3][15] = new Building();buildings[3][16] = new Building();buildings[3][17] = new Building();buildings[3][18] = new Building();buildings[3][19] = new Building();
+	
+	buildings[3][0].cost = [10,0,0,10]
+	buildings[3][0].name = "Granary";
+	buildings[3][0].description = "+3m income. +5 def. +5 popularity. +15 dev. 10w 10m";
+	buildings[3][0].effect = function(){ map[player.tileSelected.y][player.tileSelected.x].city.defense += 5; map[player.tileSelected.y][player.tileSelected.x].development += 15; player.development += 15; player.wellBeing[0] += 5; };
+	
+	buildings[3][1].cost = [15,2,0,10]
+	buildings[3][1].name = "Warehouse";
+	buildings[3][1].description = "+1w, +1g, +.5s incomes. +15 dev. 15w 2s 10m";
+	buildings[3][1].effect = function(){map[player.tileSelected.y][player.tileSelected.x].development += 15; player.development += 15};
+	
+	buildings[3][2].cost = [10,5,0,10]
+	buildings[3][2].name = "Market";
+	buildings[3][2].description = "Unlocks Market, +10 dev. 10w, 5s, 10m"
+	buildings[3][2].effect = function(){player.market = true; player.development += 10; map[player.tileSelected.y][player.tileSelected.x].development += 10;  };
+	
+	buildings[3][3].cost = [5,10,0,10]
+	buildings[3][3].name = "Workshops";
+	buildings[3][3].description = "+25 dev, +1w, +2.5g income. 5w, 10s, 10m";
+	buildings[3][3].effect = function(){map[player.tileSelected.y][player.tileSelected.x].development += 25; player.development += 15; devChange(); };
+	
+	buildings[3][4].cost = [15,10,0,10]
+	buildings[3][4].name = "Bank";
+	buildings[3][4].description = "Unlocks the bank. +15 dev. 15w, 10s, 10m"
+	buildings[3][4].effect = function(){ player.bank = true; };
+	
+	buildings[3][5].cost = [10,0,0,10]
+	buildings[3][5].name = "Archery Range";
+	buildings[3][5].description = "Allows archer creation. 10w, 10m";
+	buildings[3][5].effect = function(){ player.custom.push("archers");  };
+	
+	buildings[3][6].cost = [10,0,0,10]
+	buildings[3][6].name = "Cavalry Yard";
+	buildings[3][6].description = "Allows cavalry creation. 10w, 10m";
+	buildings[3][6].effect = function(){ player.custom.push("cavalry"); };
+	
+	buildings[3][7].cost = [10,0,100,10]
+	buildings[3][7].name = "Military Academy"
+	buildings[3][7].description = "Unlocks commander recruitment. 10w, 1g, 10m";
+	buildings[3][7].effect = function(){ player.custom.push("commanders"); };
+	
+	buildings[3][8].cost = [3,3,1,15]
+	buildings[3][8].name = "Mercenary Yard";
+	buildings[3][8].description = "Unlocks mercenary units. 3w, 3s, 1g, 15m";
+	buildings[3][8].effect = function(){ player.custom.push("mercenaries"); };
+	
+	buildings[3][9].cost = [15, 5, 0, 10];
+	buildings[3][9].name = "Siege Manufactory";
+	buildings[3][9].description = "Allows siege creation. 15w 5s 10m";
+	buildings[3][9].effect = function(){ player.custom.push("siege");  };
+	
+	buildings[3][10].cost = [10, 10, 100, 0];
+	buildings[3][10].name = "University";
+	buildings[3][10].description = "+25 dev, +1 skill to court members. 10w 10s 1g";
+	buildings[3][10].effect = function(){ map[player.tileSelected.y][player.tileSelected.x].development += 25; player.development += 25; for(i = 0; i < player.court.length; i++){ if(player.court[i][0] < 7){ player.court[i][0]++;}} courtChange(); };
+	
+	buildings[3][11].cost = [10, 10, 0, 10];
+	buildings[3][11].name = "Temple";
+	buildings[3][11].description = "+10 dev +15 popularity. 10w 10s 15m";
+	buildings[3][11].effect = function(){ player.development += 10; map[player.tileSelected.y][player.tileSelected.x].development += 10; player.wellBeing[0] += 15;  };
+	
+	buildings[3][12].cost = [5, 15, 0, 15];
+	buildings[3][12].name = "Tavern";
+	buildings[3][12].description = "+10 dev +15 popularity. 5w 15s 10m";
+	buildings[3][12].effect = function(){player.development += 10; map[player.tileSelected.y][player.tileSelected.x].development += 10; player.wellBeing[0] += 15; };
+	
+	buildings[3][13].cost = [0, 0, 200, 5];
+	buildings[3][13].name = "Nobility Estate";
+	buildings[3][13].description = "Unlocks noble estate. 200g 5m";
+	buildings[3][13].effect = function(){player.estates.push("noble");  };
+	
+	buildings[3][14].cost = [0, 0, 200, 10];
+	buildings[3][14].name = "Merchant Estate";
+	buildings[3][14].description = "Unlocks merchant estate. 200g 10m";
+	buildings[3][14].effect = function(){player.estates.push("merchant"); };
+	
+	buildings[3][15].cost = [5, 10, 0, 10];
+	buildings[3][15].name = "High Walls";
+	buildings[3][15].description = "+15 def. 5w 10s 10m";
+	buildings[3][15].effect = function(){map[player.tileSelected.y][player.tileSelected.x].city.defense += 15;  };
+	
+	buildings[3][16].cost = [8, 8, 0, 10];
+	buildings[3][16].name = "Gate House";
+	buildings[3][16].description = "+10 def. 8w 8s 5m";
+	buildings[3][16].effect = function(){ map[player.tileSelected.y][player.tileSelected.x].city.defense += 10; };
+	
+	buildings[3][17].cost = [5, 0, 0, 20];
+	buildings[3][17].name = "Moat";
+	buildings[3][17].description = "+10 def. 5w 20m";
+	buildings[3][17].effect = function(){map[player.tileSelected.y][player.tileSelected.x].city.defense += 10;  };
+	
+	buildings[3][18].cost = [15, 15, 0, 15];
+	buildings[3][18].name = "Town Castle";
+	buildings[3][18].description = "+25 def. +15 Popularity. 15w 15s 15m";
+	buildings[3][18].effect = function(){map[player.tileSelected.y][player.tileSelected.x].city.defense += 25; player.wellBeing[0] += 15;  };
+	
+	buildings[3][19].cost = [5, 10, 0, 15];
+	buildings[3][19].name = "Guard Towers";
+	buildings[3][19].description = "+15 def. +15 Popularity. 5w 10s 15m";
+	buildings[3][19].effect = function(){ map[player.tileSelected.y][player.tileSelected.x].city.defense += 15; player.wellBeing[0] += 15; };
+	
+	buildings[4][0] = new Building();buildings[4][1] = new Building();buildings[4][2] = new Building();buildings[4][3] = new Building();
+	buildings[4][0].cost = [20, 15, 0, 10];
+	buildings[4][0].name = "Metalworks"
+	buildings[4][0].description = "Unlocks ore purification, 20w 15s 10m";
+	buildings[4][0].effect = function(){ player.hasManufactory = true; }
+	
+	buildings[4][1].cost = [30, 5, 0, 10];
+	buildings[4][1].name = "Port"
+	buildings[4][1].description = "Unlocks adjacent sea tiles, 30w 5s 10m";
+	buildings[4][1].effect = function(){ player.resources[5] += 15; }
+	
+	buildings[4][2].cost = [0, 0, 300, 10];
+	buildings[4][2].name = "Assassins"
+	buildings[4][2].description = "Unlocks assassination plots, 300g";
+	buildings[4][2].effect = function(){ player.assassins = true; }
+	
+	buildings[4][3].cost = [60, 60, 0, 10];
+	buildings[4][3].name = "Citadel"
+	buildings[4][3].description = "Increases Defense by Development, 60w 60s 10m";
+	buildings[4][3].effect = function(){ map[player.tileSelected.y][player.tileSelected.x].city.defense += Math.floor(map[player.tileSelected.y][player.tileSelected.x].development); }
+	
+	//0 = size, 1 = offense, 2 = defense, 3 = discipline, 4 = weapon, 5 = second weapon, 6 = training needed, 7 = unit type, 8 = location, 9 = commander, 10 = owner, 11 = index
+	genericUnits = [[], [], []]; //Infantry, Archers, Cavalry
+	genericUnits[0][0] = ["Spearmen",[25, 3, 3, 2, 0, 0, 15, 0, [player.tileSelected.y,player.tileSelected.x], genCommander(0), turn, player.army.length]];
+	genericUnits[0][1] = ["Swordsmen",[25, 4, 2, 2, 2, 2, 20, 0, [player.tileSelected.y,player.tileSelected.x], genCommander(0), turn, player.army.length]];	
+	genericUnits[1][0] = ["Longbowmen",[20, 6, 1, 1, 0, 0, 20, 1, [player.tileSelected.y,player.tileSelected.x], genCommander(0), turn, player.army.length]];
+	genericUnits[1][1] = ["Slingers",[20, 5, 3, 1, 1, 1, 20, 1, [player.tileSelected.y,player.tileSelected.x], genCommander(0), turn, player.army.length]];
+	genericUnits[2][0] = ["Lance Riders",[20, 6, 0, 4, 0, 0, 20, 2, [player.tileSelected.y,player.tileSelected.x], genCommander(0), turn, player.army.length]];
+	genericUnits[2][1] = ["Bow Cavalry",[20, 4, 4, 4, 2, 0, 20, 2, [player.tileSelected.y,player.tileSelected.x], genCommander(0), turn, player.army.length]];
+	function genName(g){
+		var mBegs = ["Le", "Ke", "Je", "Be", "Me", "Ko", "Ye", "E"];
+		var mMids = ["k", "r", "ke", "re", "vin", "t", "s", ];
+		var mEnds = ["os", "ih", "o", "it", "en", "in", "de", "des", "re", "ro",];
+		
+		var fBegs = ["Ke", "Ti", "Di", "De", "Li", "Ki", "Ve", "Al", "Ma", "Ni", "Ari"];
+		var fMids = ["r", "n", "c", "s", "r", "or", "ret", "ken"];
+		var fEnds = ["a", "i", "ei", "is", "ia", "a"];
+		if(g == 0){
+			return "" + mBegs[Math.floor(Math.random() * mBegs.length)] + "" + mMids[Math.floor(Math.random() * mMids.length)] + "" + mEnds[Math.floor(Math.random() * mEnds.length)];
+		}
+		else{
+			return "" + fBegs[Math.floor(Math.random() * fBegs.length)] + "" + fMids[Math.floor(Math.random() * fMids.length)] + "" + fEnds[Math.floor(Math.random() * fEnds.length)];
+		}
+	}
+	function genValues(){
+		var values = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+		var points = 40;
+		while(points > 0){
+			var i = Math.floor(Math.random() * 17);
+			if(values[i] < 5){
+				values[i]++;
+				points--;
+			}
+		}
+		return values;
+		//0	Wisdom,	1	Adaptivity		2	Experimentality3	Resolve4	Liberty5	Joy6	Identity7	Honesty8	Tradition9	Pride10	Duty11	Sacrifice		12	Loyalty		13	Order		14	Achievement 		15  Freedom16  Intellect17  Tolerance
+	}
+	function getTitle(rank, gender){
+		if(gender == 0){
+			if(rank == 0){ return "King"; }
+			if(rank == 1){ return "Lord"; }
+			else{ return "Baron"; }
+		}
+		else{
+			if(rank == 0){ return "Queen"; }
+			if(rank == 1){ return "Lady"; }
+			else{ return "Baroness"; }
+		}
+	}
+	function genNoble(r, id){
+		var idT;
+		if(id == undefined){
+			idT = -1;
+		}
+		else{ 
+			idT = id;
+		}
+		var gen = Math.floor(Math.random() * 2);
+		var skill = Math.ceil(7 * Math.random());
+		var name = genName(gen);
+		var values = genValues();
+		return [skill, name, gen, values, r, idT, 0];
+	}
+	function genCommander(e){
+		var skill = Math.ceil(7 * Math.random());
+		var experimentality = Math.floor(Math.random() * 4);
+		var experience = e;
+		var gen = Math.floor(Math.random() * 2);
+		var name = genName(gen);
+		return [skill, experimentality, experience, gen, name];
+	}
+	function opinionOf(n1, n2, mod){
+		var m = mod;
+		if(isNaN(mod)){
+			m = 0;
+		}
+		var compos = 0;
+		for(i = 0; i < 17; i++){
+			compos += n1[3][16] - Math.abs(n1[3][i] - n2[3][i]);
+		}
+		compos += (3 * n1[3][11]) - 5;
+		compos += Math.floor((30 - Math.abs(cen()/2 - calcAvgCen()))/2);
+		return Math.floor(compos + mod);
+	}
+	function resetOverlay(){
+		for(i = 0; i < map.length; i++){
+			overlay[i] = [];
+			for(j = 0; j < map[i].length; j++){
+				overlay[i][j] = -1;
+			}
+		}
+	}
+	var xView = 0;
+	var yView = 50;
+	var selected = -1;
+	socket.emit('pConnected', function(data){});
+	socket.on('pNum', function(data){
+		console.log(data.map);
+		player.color = data.color;
+		player.ruler = data.ruler;
+		player.court.push(data.ruler);
+		turn = data.number;
+		map = data.gameMap;
+		for(i = 0; i < map.length; i++){
+			overlay[i] = [];
+			for(j = 0; j < map[i].length; j++){
+				overlay[i][j] = -1;
+			}
+		}
+		player.wellBeing = data.well;
+	});
+	socket.on('spawn', function(data){
+		yView = data.yView;
+		xView = data.xView;
+	});
+	drawDelta = true;
+	socket.on('report', function(data){
+		enColors = data.cols;
+		socket.emit('report', {
+			player: player,
+			number: turn,
+		});
+	});
+	socket.on('resChange', function(data){
+		//console.log(data.res);
+		if(data.t == turn){
+			if(data.t == turn){
+				player.resources = data.res;
+				delta = true;
+			}
+		}
+	});
+	socket.on('trade', function(data){
+		player.trades.push([turn, data.sender, data.buy, data.sell]); 
+	});
+	socket.on('sChange', function(data){
+		player.size = data.s;
+		console.log("a" + data.s); 
+		delta = true;
+	});
+	socket.on('psChange', function(data){
+		player.provSize = data.s;
+	});
+	socket.on('provChange', function(data){
+		player.provinces[data.index] = data.prov;
+	});
+	function provChange(index){
+		socket.emit('provChange', {
+			prov: player.provinces[index],
+			index: index,
+			t: turn,
+		});
+	}
+	function resChange(){
+		socket.emit('resChange', {
+			res: player.resources,
+			t: turn,
+		});
+		delta = true;
+	}
+	function armyChange(index){
+		socket.emit('armyChange', {
+			unit: player.army[index],
+			i: index,
+			t: turn,
+		});
+		delta = true;
+	}
+	function courtChange(){
+		socket.emit('courtChange', {
+			court: player.court,
+			t: turn,
+		});
+		delta = true;
+	}
+	function sChange(){
+		socket.emit('sChange', {
+			t: turn,
+			s: player.size,
+		});
+	}
+	function supChange(){
+		socket.emit('supChange', {
+			sup: player.baseSupplyLimit,
+			t: turn,
+		});
+	}
+	function bsChange(){
+		socket.emit('bsChange', {
+			bs: player.baseSize,
+			t: turn,
+		});
+	}
+	function wellChange(){
+		socket.emit('wellChange', {
+			well: player.wellBeing,
+			t: turn,
+		});
+		delta = true;
+	}
+	function devChange(){
+		socket.emit('devChange', {
+			t: turn,
+			dev: player.development,
+		});
+	}
+	function taxChange(){
+		socket.emit('taxChange', {
+			t: turn,
+			taxes: player.taxes,
+		});
+	}
+	function tileChange(y, x, turn, dev){
+		socket.emit('tileChange', {
+			tile: map[y][x],
+			t: turn,
+			devChange: dev,
+		});
+		drawDelta = true;
+	}
+	function safeY(i){
+		if(i < 0){
+			i += map.length;
+		}
+		if(i >= map.length){
+			i -= map.length;
+		}
+		return i;
+	}
+	function safeX(i){
+		if(i < 0){
+			i += map[0].length;
+		}
+		if(i >= map[0].length){
+			i -= map[0].length;
+		}
+		return i;
+	}
+	function calcAvgCen(){
+		var a = 20;
+		for(i = 1; i < player.court.length; i++){
+			a += 10 + (player.court[i][3][10] + player.court[i][3][12]) - (player.court[i][3][14] + player.court[i][3][15]);
+		}
+		return 5 * a/player.court.length;
+	}//
+	var index = -1;
+	function getIndex(tier, x, y){
+		if(tier == 0){
+			return 0;
+		}
+		var index;
+		var brk;
+		var dist = Math.sqrt(Math.pow((x - 180), 2) + Math.pow((y-350), 2));
+		if(tier == 1){ brk = 2;}
+		if(tier == 3){ brk = 10;}
+		var ix = Math.round((Math.acos((x-180)/dist) - Math.PI/4)/(Math.PI/brk));
+		var iy = Math.round((Math.asin((y-350)/dist) - Math.PI/4)/(Math.PI/brk));
+		if(tier == 2){
+			ix = Math.round((Math.acos((x-180)/dist) - Math.PI/8)/(Math.PI/4));
+			iy = Math.round((Math.asin((y-350)/dist) - Math.PI/8)/(Math.PI/4));
+		}
+		if(tier == 1){
+			if(ix == 0){
+				if(iy == 0){
+					index = 0;
+				}
+				else{
+					index = 3;
+				}
+			}
+			else if(iy == 0){
+				index = 1;
+			}
+			else{
+				index = 2;
+			}
+		}
+		else if(tier == 2){
+			if(ix == iy || iy + ix == 3){
+				index = ix;
+			}
+			else if(iy + ix == -1){
+				index = 8 + iy;
+			}
+			else{
+				index = Math.abs(iy) + 3;
+			}
+		}
+		else if(tier == 3){
+			if(ix == iy){
+				index = ix + 2;
+			}
+			else if(ix + iy == 5){
+				index = ix + 2;
+			}
+			else if(ix + iy == -5){
+				index = 22 + iy;
+			}
+			else{
+				index = Math.abs(iy) + 7;
+			}
+		}
+		return index;
+	}
+	var tab = "decisions";
+	var trading = false;
+	var pRes = 0;
+	var buying = false;
+	var selling = false;
+	var tempType = player.governmentType;
+	var scrollbar = [260 , 90 , 45, 30];
+	var decisionSelected = 0;
+	var dShift = 0;
+	function cen(){
+		var c = 200 * (player.size/(player.size+player.provSize) + 5*player.development/(player.provSize+player.development))/6;
+		if(isNaN(c) || c > 200){
+			c = 200;
+		}
+		return c;
+	}
+	var tier = 0;
+	var taxSelected = -1;
+	var oldTaxes = player.taxes.slice();
+	var newTaxes = player.taxes.slice();
+	var loaning = false;
+	var depositing = false;
+	var firstClick = false;
+	var cust = "";
+	var pts = 10;
+	var curShip = [0, 0, 0, 0, 0]
+	var aShift = 0;
+	var aSel = -1;
+	var gSel = -1;
+	var sels = [];
+	function drawRightBar(e){
+		var event = e || 0;
+		var rect = r.getBoundingClientRect();
+		rtx.clearRect(0, 0, r.width, r.height);
+		rtx.fillStyle = "#F2F4F4";
+		rtx.fillRect(0, 0, rect.width, 60);
+		rtx.fillRect(0, rect.height - 60, rect.width, 60);
+		rtx.fillStyle = "black";
+		rtx.font = "16px Courier";
+		rtx.fillText("Decisions", 2, 40);
+		rtx.fillText("Provinces", 98, 40);
+		rtx.fillText("Estates", 203, 40);
+		rtx.fillText("Court", 289, 40);
+		rtx.fillText("Character", 2, rect.height - 20);
+		rtx.fillText("Military", 100, rect.height - 20);
+		rtx.fillText("Selected", 185, rect.height - 20);
+		rtx.fillText("Summary", 275, rect.height - 20);
+		var x = (event.clientX - rect.left);
+		var y = (event.clientY - rect.top);
+		if(x > 0 && y <= 60){
+			tSelected = -1;
+			sel = -1;
+			resetOverlay();
+			if(x < 180){
+				if(x < 90){
+					tab = "decisions";
+				}
+				else if(player.govType != "nomad"){
+					tab = "provinces";
+				}
+			}
+			else if(x > 270){
+				tab = "court";
+			}
+			else{
+				tab = "estates";
+			}
+		}
+		else if(x > 0 && y > rect.height - 65){
+			if(x < 180){
+				if(x < 90){
+					tab = "character";
+				}
+				else{
+					tab = "military";
+				}
+			}
+			else if(x > 265){
+				tab = "summary";
+			}
+			else{
+				tab = "selected";
+			}
+		}
+		if(tab == "decisions"){
+		if(trading){
+			pRes = [player.resources[4], player.resources[0], player.resources[1], player.resources[3], player.resources[2]];
+				document.addEventListener('keydown', drawRightBar);
+			rtx.clearRect(0, 0, r.width, r.height);
+			rtx.font = "13px Courier";
+			rtx.fillText("Buy", 191, 60 + 15);
+			rtx.fillText("Sell", 160, 60 + 15);
+			rtx.font = "18px Courier";
+			
+			rtx.fillText("Manpower: ", 15, 60 + 30);
+			rtx.strokeRect(190, 60 + 15, 30, 30); //manpower
+			rtx.strokeRect(160, 60 + 15, 30, 30); //manpower
+			rtx.fillText(sellRates[0], 160, 60 + 30);
+			rtx.fillText( buyRates[0], 190, 60 + 30);
+			
+			
+			rtx.fillText("Wood: ", 15, 60 + 60);
+			rtx.strokeRect(190, 60 + 45, 30, 30); //wood
+			rtx.strokeRect(160, 60 + 45, 30, 30); //wood
+			rtx.fillText(sellRates[1], 160, 60 + 60);
+			rtx.fillText(buyRates[1], 190, 60 + 60);
+			
+			
+			rtx.fillText("Stone: ", 15, 60 + 90);
+			rtx.strokeRect(190, 60 + 75, 30, 30); //stone
+			rtx.strokeRect(160, 60 + 75, 30, 30); //stone
+			rtx.fillText(sellRates[2], 160, 60 + 90);
+			rtx.fillText(buyRates[2], 190, 60 + 90);
+			
+			
+			rtx.fillText("Ore: ", 15, 60 + 120);
+			rtx.strokeRect(190, 60 + 105, 30, 30); //ore
+			rtx.strokeRect(160, 60 + 105, 30, 30); //ore
+			rtx.fillText(sellRates[3], 160, 60 + 120);
+			rtx.fillText(buyRates[3], 190, 60 + 120);
+			
+			
+			rtx.fillText("Gold: ", 15, 60 + 150);
+			rtx.strokeRect(190, 60 + 135, 30, 30); //gold
+			rtx.strokeRect(160, 60 + 135, 30, 30); //gold
+			rtx.fillText(sellRates[4], 160, 60 + 150);
+			rtx.fillText(buyRates[4], 190, 60 + 150);
+			
+			
+			rtx.fillText("Cancel", 15, 60 + 190);
+			rtx.strokeRect(15, 60 + 170, 65, 20); //Cancel
+			
+			rtx.fillText("Send", 160, 60 + 190);
+			rtx.strokeRect(160, 60 + 170, 45, 20); //Accept
+			
+			if(event != 0 && event.type == "mousedown" && event.which == 1 && x > 0 && y > 60 && y < 640){
+				delta = true;
+				if(y < 60 + 170 && x < 190){
+					comSelected = Math.floor((y - 75)/30);
+					selling = true;
+					buying = false;
+					document.addEventListener('keydown', drawRightBar);
+				}
+				else if(x > 190){
+					comSelected = Math.floor((y- 75)/30);
+					buying = true;
+					selling = false;
+					document.addEventListener('keydown', drawRightBar);
+				}
+				else if(y > 170){
+					if(x > 160){
+						console.log(player.tileSelected.owner);
+						var d = [turn, selected, buyRates, sellRates];
+						socket.emit('trade', {
+							details: d,
+						});
+					}
+					makingDecisions = true;
+					trading = false;
+				}
+				
+			}
+								if(buying){
+					if(event.keyCode >= 48 && event.keyCode <= 57){
+						var num = event.keyCode - 48;
+						if(buyRates.length > comSelected){
+							if(buyRates[comSelected].toString().length <= 2){
+								buyRates[comSelected] *= 10;
+									buyRates[comSelected] += num;
+									delta = true;
+								}
+							}
+						}
+						else if(event.keyCode == 8){
+							if(buyRates.length >= comSelected && buyRates[comSelected].toString().length > 0){
+								buyRates[comSelected] = Math.floor(buyRates[comSelected]/10);
+								delta = true;
+							}
+						}
+					}
+					else if(selling){
+						if(event.keyCode >= 48 && event.keyCode <= 57){
+							var num = event.keyCode - 48;
+							if(sellRates.length > comSelected){
+								if(buyRates[comSelected].toString().length <= 2){
+									sellRates[comSelected] *= 10;
+									sellRates[comSelected] += num;
+									if(sellRates[comSelected] > pRes[comSelected]){
+										sellRates[comSelected] = pRes[comSelected];
+									}
+									delta = true;
+								}
+							}
+						}
+						else if(event.keyCode == 8){
+							if(sellRates.length >= comSelected && sellRates[comSelected].toString().length > 0){
+								sellRates[comSelected] = Math.floor(sellRates[comSelected]/10);
+								delta = true;
+							}
+						}
+					}
+			}
+			else{
+		if(player.trades.length > 0){
+			rtx.clearRect(0, 300, r.width, 300);
+			rtx.fillStyle = "black";
+			rtx.font = "13px Courier";
+			rtx.fillText("Give", 191, 315);
+			rtx.fillText("Get", 160, 315);
+			rtx.font = "18px Courier";
+			rtx.fillText("Manpower: ", 15, 330);
+			rtx.fillText(player.trades[0][3][0], 160, 330);
+			rtx.fillText(player.trades[0][2][0], 190, 330);
+			rtx.fillText("Wood: ", 15, 360);
+			rtx.fillText(player.trades[0][3][1], 160, 360);
+			rtx.fillText(player.trades[0][2][1], 190, 360);
+				
+				
+			rtx.fillText("Stone: ", 15, 390);
+				
+			rtx.fillText(player.trades[0][3][2], 160, 390);
+			rtx.fillText(player.trades[0][2][2], 190, 390);
+			
+				
+			rtx.fillText("Ore: ", 15, 420);
+					
+			rtx.fillText(player.trades[0][3][3], 160, 420);
+			rtx.fillText(player.trades[0][2][3], 190, 420);
+				
+					
+			rtx.fillText("Gold: ", 15, 450);
+			
+			rtx.fillText(player.trades[0][3][4], 160, 450);
+			rtx.fillText(player.trades[0][2][4], 190, 450);
+			
+			
+			rtx.fillText("Decline", 15, 490);
+								
+			rtx.fillText("Accept", 160, 490);
+					
+			if(event != 0 && x > 0 && y > 470 && y < 510){
+				if(x < 140){
+					player.trades.splice(0, 1);
+					delta = true;
+				}
+				else if(x > 140){
+					socket.emit('handleTrade', {
+						r:player.trades[0][0],
+						s:player.trades[0][1],
+						buyR:player.trades[0][2],
+						sellR:player.trades[0][3],
+					});
+					player.trades.splice(0, 1);
+					delta = true;
+				}
+			}
+		}	
+			rtx.strokeRect(0, 0, 90, 60);
+			if(player.ableDecisions.length < 6){
+				dShift = 0;
+			}
+			else { 
+				dShift = Math.round(scrollbar[1]/200 * (player.ableDecisions.length - 6));
+			}
+			rtx.strokeRect(scrollbar[0] , scrollbar[1], scrollbar[2] , scrollbar[3]);
+			if(event != 0 ){
+				if(event.type == 'mousedown' && x > 260 && y < 310){
+					document.addEventListener('mousemove', drawRightBar);
+					document.addEventListener('mouseup', drawRightBar);
+				}
+				if(event.type == 'mouseup'){
+					document.removeEventListener('mousemove', drawRightBar);
+				}
+				if(event.type == 'mousemove' && x > scrollbar[0] && x < scrollbar[0] + scrollbar[2] && y >= 80 && (y + scrollbar[3]) <= 260){
+					scrollbar[1] = y;
+					rtx.clearRect(255, 60, r.width - 255, 260);
+					rtx.strokeRect(scrollbar[0] , scrollbar[1], scrollbar[2] , scrollbar[3]);
+				}
+				if(event.type == "mousedown" && event.which == 1 && x < 260 && x > 0 && player.ableDecisions.length > Math.floor((y-60)/25) - 1){
+					if(decisionSelected != player.ableDecisions[Math.floor((y-60)/25) - 1 + dShift]){
+						decisionSelected = player.ableDecisions[Math.floor((y-60)/25) - 1 + dShift];
+					}
+					else {
+						player.ableDecisions[Math.floor((y-60)/25) - 1 + dShift].effect();
+						decisionSelected = 0;
+					}
+					delta = true;
+				}
+			}
+			var i = 0;
+			player.ableDecisions = [];
+			while(i < decisions.length ){
+				if(decisions[i].condition()){
+					player.ableDecisions.push(decisions[i]);
+				}
+				i++;
+			}
+			for(i = dShift ; i < player.ableDecisions.length; i++){
+				if(i <= 7 + dShift && player.ableDecisions[i].condition()){
+					rtx.font = "18px Courier";
+					rtx.strokeRect(5, 90 + (25 * (i - dShift)), 200, 20);
+					rtx.fillText(player.ableDecisions[i].name, 5, 85 + (25 * (i - dShift + 1)));
+				}
+				else {
+					player.ableDecisions.splice(i, 1);
+				}
+			}
+			try{
+				if(decisionSelected != 0){
+					rtx.fillText(decisionSelected.description, 5, 550)
+				}
+			}
+			catch(error){
+				decisionSelected = 0;
+			}
+		}
+		}
+		else if(tab == "provinces"){
+			if(player.provinceSelected == -1 || player.action == "provinces"){
+				rtx.font = "19px Courier"
+				rtx.strokeRect(96, 0, 90, 60);
+				rtx.fillText("Max Provinces: " + player.maxProvinces(), 30, 90);
+				if(player.action == "provinces" && player.provinces[player.provinces.length -1].territory.length > 0){
+					rtx.strokeRect(75, 400, 210, 30);
+					rtx.font = "21px Courier";
+					rtx.fillText("Save Province", 77, 425);
+					rtx.strokeRect(5, 150, 25, 25);
+					rtx.fillText("Grass", 40, 165);
+					if(player.provinces[player.provinces.length -1].tiles[0] == 1){
+						rtx.fillStyle = "green";
+						rtx.fillRect(10, 155, 15, 15);
+						rtx.fillStyle = "black";
+					}
+					rtx.strokeRect(5, 180, 25, 25);
+					rtx.fillText("Forest", 40, 195);
+					if(player.provinces[player.provinces.length -1].tiles[1] == 1){
+						rtx.fillStyle = "green";
+						rtx.fillRect(10, 185, 15, 15);
+						rtx.fillStyle = "black";
+					}
+					rtx.strokeRect(5, 210, 25, 25);
+					rtx.fillText("Hills", 40, 225);
+					if(player.provinces[player.provinces.length -1].tiles[2] == 1){
+						rtx.fillStyle = "green";
+						rtx.fillRect(10, 215, 15, 15);
+						rtx.fillStyle = "black";
+					}
+					rtx.strokeRect(5, 240, 25, 25);
+					rtx.fillText("Mountains", 40, 255);
+					if(player.provinces[player.provinces.length -1].tiles[3] == 1){
+						rtx.fillStyle = "green";
+						rtx.fillRect(10, 245, 15, 15);
+						rtx.fillStyle = "black";
+					}
+					if(event.type == 'mousedown' && x > 0 && x < r.width){
+						if(y < 400 && y > 150){
+							player.provinces[player.provinces.length - 1].tiles[Math.floor((y - 150)/28)] = -1 * player.provinces[player.provinces.length - 1].tiles[Math.floor((y - 150)/28)];
+							delta = true;
+						}
+						else if(player.provinces.length <= player.maxProvinces() && y >= 400 && y <= 430){
+							for(i = player.territory.length -1 ; i > 0; i--){
+								if(map[player.territory[i].y][player.territory[i].x].province != -1){
+									player.territory.splice(i, 1);
+								}
+							}
+							player.action = "claiming";
+							delta = true;
+							player.provinces[player.provinces.length -1].governor = genNoble(1, player.provinces.length - 1);
+							player.court.push(player.provinces[player.provinces.length -1].governor);
+							player.provinces[player.provinces.length - 1].manpower = player.resources[6] * player.provSize/player.size
+							player.resources[6] *= 1 - player.provSize/player.size;
+							player.tileSelected.selected = false;
+							provChange(player.provinces.length - 1);
+							resChange();
+							courtChange();
+							player.provinceSelected = -1;
+						}
+					}
+				}
+				else if(player.action != "provinces" && player.provinces.length < player.maxProvinces()){
+					rtx.strokeRect(75, 400, 210, 30);
+					rtx.font = "21px Courier";
+					rtx.fillText("Create Province", 77, 425);
+					if(event.type == 'mousedown' && x > 0 && y >= 400 && y <= 430){	
+						if(player.action != "provinces" && player.provinces.length <= player.maxProvinces()){
+							player.action = "provinces";
+							delta = true;
+							var pr = new Province();
+							player.provinces.push(pr);
+						}
+					}
+				}
+			}
+			else {
+				rtx.font = "21px Courier";
+				rtx.fillText("Wood: " + Math.floor(player.provinces[player.provinceSelected].resources[0]), 15, 125);
+				rtx.fillText("Stone: " + Math.floor(player.provinces[player.provinceSelected].resources[1]), 15, 155);
+				rtx.fillText("Ore: " + Math.floor(player.provinces[player.provinceSelected].resources[2]), 15, 185);
+				rtx.strokeRect(75, 400, 210, 30);
+				rtx.fillText("Collect Wood", 150, 125);
+				rtx.fillText("Collect Stone", 150, 155);
+				rtx.fillText("Collect Ore", 150, 185);
+				rtx.strokeRect(75, 400, 210, 30);
+					rtx.font = "21px Courier";
+					rtx.fillText("Update Tiles", 77, 425);
+					rtx.strokeRect(5, 200, 25, 25);
+					rtx.fillText("Grass", 40, 215);
+					if(player.provinces[player.provinceSelected].tiles[0] == 1){
+						rtx.fillStyle = "green";
+						rtx.fillRect(10, 205, 15, 15);
+						rtx.fillStyle = "black";
+					}
+					rtx.strokeRect(5, 50 + 180, 25, 25);
+					rtx.fillText("Forest", 40, 50 + 195);
+					if(player.provinces[player.provinceSelected].tiles[1] == 1){
+						rtx.fillStyle = "green";
+						rtx.fillRect(10, 50 + 185, 15, 15);
+						rtx.fillStyle = "black";
+					}
+					rtx.strokeRect(5, 50 + 210, 25, 25);
+					rtx.fillText("Hills", 40, 50 + 225);
+					if(player.provinces[player.provinceSelected].tiles[2] == 1){
+						rtx.fillStyle = "green";
+						rtx.fillRect(10, 50 + 215, 15, 15);
+						rtx.fillStyle = "black";
+					}
+					rtx.strokeRect(5, 50 + 240, 25, 25);
+					rtx.fillText("Mountains", 40, 50 + 255);
+					if(player.provinces[player.provinceSelected].tiles[3] == 1){
+						rtx.fillStyle = "green";
+						rtx.fillRect(10, 50 + 245, 15, 15);
+						rtx.fillStyle = "black";
+					}
+				if(event.type == 'mousedown' && x < r.width && y > 60){
+					if(y < 200 && x > 150 && y > 60){
+						var which = Math.floor((y - 100)/35);
+						if(which == 0){
+							player.resources[0] += player.provinces[player.provinceSelected].resources[0];
+							player.provinces[player.provinceSelected].resources[0] = 0;
+						}
+						else if(which == 1){
+							player.resources[1] += player.provinces[player.provinceSelected].resources[1];
+							player.provinces[player.provinceSelected].resources[1] = 0;
+						}
+						else if(which == 2){
+							player.resources[3] += player.provinces[player.provinceSelected].resources[2];
+							player.provinces[player.provinceSelected].resources[2] = 0;
+						}
+						resChange();
+						provChange(player.provinceSelected);
+					}
+					else if(y < 400){
+						player.provinces[player.provinceSelected].tiles[Math.floor((y - 200)/28)] = -1 * player.provinces[player.provinceSelected].tiles[Math.floor((y - 200)/28)];
+						delta = true;
+					}
+					else if(y < 430){
+						provChange(player.provinceSelected);
+						player.provinceSelected = -1;	
+						delta = true;
+					}
+				}
+			}
+		}
+		else if(tab == "estates"){
+			rtx.strokeRect(191, 0, 87, 60);
+		}
+		else if(tab == "court"){
+			rtx.strokeRect(277, 0, 83, 60);
+			for(j = 0; j < Math.min(8, player.court.length); j++){
+				if(j == sel && player.court.length > 1){
+					var avg = 0;
+					rtx.font = "19px Courier";
+					var mod = 0;
+					for(k = 0; k < j; k++){
+						if(j == 0){
+							mod = player.court[k][6];
+						}
+						avg += opinionOf(player.court[k], player.court[j], 0);
+						rtx.fillText(Math.floor(opinionOf(player.court[k], player.court[j], 0)), 300, 80 + (k * 75));
+					}
+					for(k = j + 1; k < player.court.length; k++){
+						if(j == 0){
+							mod = player.court[k][6];
+						}
+						avg += opinionOf(player.court[k], player.court[j], 0);
+						rtx.fillText(Math.floor(opinionOf(player.court[k], player.court[j], 0)), 300, 80 + (k * 75));
+					}
+					avg = avg/(player.court.length - 1);
+					rtx.fillText("Avg: " + Math.round(avg), 260, 80 + (j * 75));
+				}
+				if(sel == j){
+					rtx.strokeStyle = "gold";
+				}
+				else{
+					rtx.strokeStyle = "black";
+				}
+				rtx.strokeRect(0, 60 + (75 * j), r.width, 75);
+				rtx.strokeStyle = "black";
+				if(player.court[j][0] < 4){
+					rtx.fillStyle = "#8C7853";
+				}
+				else if(player.court[j][0] < 5){
+					rtx.fillStyle = "#E6E8FA";
+				}
+				else{
+					rtx.fillStyle = "#CFB53B";
+				}
+				for(i = 0; i < player.court[j][0]; i++){
+					rtx.fillRect(15 + (i * 8), 75 + (j * 75), 5, 45);
+				}
+				rtx.fillStyle = "black";
+				rtx.font = "20px Calibri";
+				rtx.fillText(getTitle(player.court[j][4], player.court[j][2]) + " " + player.court[j][1], 80, 100 + (j * 75));
+			}
+			if(event.type == 'mousedown' || delta){
+				if(x > 0 && x < r.width && y > 60 && y < 660 || delta){
+					if(!isNaN(y)){
+						tSelected = -1;
+						resetOverlay();
+						if(sel != Math.min(player.court.length - 1, Math.floor((y-60)/75))){
+							sel = Math.min(player.court.length - 1, Math.floor((y-60)/75));
+						}
+						else{
+							sel = -1;
+						}
+					}
+					if(sel != -1){
+						if(player.court[sel][4] == 0){
+							tSelected = player.territory;
+						}
+						else if(player.court[sel][4] == 1){
+							for(i = 0; i < player.provinces.length; i++){
+								if(player.provinces[i].governor[5] == player.court[sel][5]){
+									tSelected = player.provinces[i].territory;
+									i = player.provinces.length;
+								}
+							}
+						}
+						else{
+							for(i = 0; i < player.cities.length; i++){
+								if(player.cities[i].mayor == sel){
+									tSelected = [map[player.cities[i].y][player.cities[i].x]];
+									i = player.cities.length;
+								}
+							}
+						}
+						for(i = 0; i < tSelected.length; i++){
+							overlay[tSelected[i].y][tSelected[i].x] = 2;
+						}
+					}
+				}
+				delta = true;
+			}
+		}
+		else if(tab == "character"){
+			rtx.strokeRect(0, rect.height-61, 95, 60);
+			var s;
+			if(sel > -1){
+				s = sel;
+			} else{ s = 0; }
+			rtx.font = "21px Courier";
+			if(s != 0){
+				rtx.fillText(player.court[s][1] + "'s " + "Values", 8, 69 + 5);
+			}
+			else{
+				rtx.fillText("Your Values", 8, 69 + 5);
+			}
+			var compos = 0;
+			rtx.font = "20px Courier";
+			rtx.fillText("Wisdom: ", 8, 89 + 5);
+			rtx.fillText("Experimentality: ", 8, 109 + 5);
+			rtx.fillText("Resolve: ", 8, 129 + 5);
+			rtx.fillText("Liberty: ", 8, 149 + 5);
+			rtx.fillText("Joy: ", 8, 169 + 5);
+			rtx.fillText("Identity: ", 8, 189 + 5);
+			rtx.fillText("Honesty: ", 8, 209 + 5);
+			rtx.fillText("Tradition: ", 8, 229 + 5);
+			rtx.fillText("Pride: ", 8, 249 + 5);
+			rtx.fillText("Duty: ", 8, 269 + 5);
+			rtx.fillText("Sacrifice: ", 8, 289 + 5);
+			rtx.fillText("Loyalty: ", 8, 309 + 5);
+			rtx.fillText("Order: ", 8, 329 + 5);
+			rtx.fillText("Achievement: ", 8, 349 + 5);
+			rtx.fillText("Freedom: ", 8, 369 + 5);
+			rtx.fillText("Intellect: ", 8, 389 + 5);
+			rtx.fillText("Tolerance: ", 8, 409 + 5);
+			for(i = 0; i < 17; i++){
+				if(player.court[s][3][i] <= 1){
+					rtx.fillStyle = "red";
+				}
+				else if(player.court[s][3][i] <= 3){
+					rtx.fillStyle = "olive";
+				}
+				else{
+					rtx.fillStyle = "green";
+				}
+				rtx.fillText(player.court[s][3][i], 225, 94 + (20*i));
+				if(s > 0){
+					rtx.fillStyle = "black";
+					rtx.fillText(player.court[s][3][16] - Math.abs(player.court[0][3][i] - player.court[s][3][i]), 255, 94 + (20*i)); 
+				}
+			}
+			if(s > 0){
+				var lBonus = Math.floor((3 * player.court[s][3][11]) - 5);
+				var cBonus = Math.floor((30 - Math.abs(cen()/2 - calcAvgCen()))/2);
+				rtx.fillText("Loyalty: " + lBonus, 130, 484);
+				rtx.fillText("Centralization: " + cBonus, 130, 464);
+				rtx.fillText("Other " + player.court[s][6],130, 504);
+				rtx.fillText("Total Opinon: " + opinionOf(player.court[s], player.court[0], player.court[s][6]),130, 524);
+				if(player.court[s][2] == 2){
+				
+				}
+			}
+		}
+		else if(tab == "military"){
+			rtx.strokeRect(95, rect.height-61, 85, 60);
+			if(view == ""){
+				rtx.font = "22px Courier";
+				rtx.fillText("Army", 20, 80);
+				rtx.fillText("Navy", 20, 240);
+				rtx.fillText("Defense", 20, 400);
+				rtx.strokeRect(75, 100, 210, 30);
+				rtx.strokeRect(75, 260, 210, 30);
+				rtx.strokeRect(75, 420, 210, 30);
+				rtx.fillRect(30, 560, 300, 1);
+				rtx.fillText("View Units", 110, 120);
+				rtx.fillText("Build Fort", 114, 440);
+				rtx.fillText("View Ships", 110, 280);
+				if(event.type == "mousedown" && event.which == 1){
+					if( y > 100 && y < 130){
+						view = "army";
+					}
+					delta = true;
+				}
+			}
+			else if(view == "army"){
+				rtx.fillText("Back", 158, 620);
+				if(aSel == -1){
+					for(i = aShift; i < Math.min(7, player.army.length); i++){
+						rtx.strokeRect(70, 100+((i-aShift)*60), 220, 50);
+						rtx.strokeRect(10, 100+(i*60), 50, 50);
+						if(sels.indexOf(i) > -1){
+							rtx.fillStyle = "green";
+							rtx.fillRect(22.5, 112.5+(i*60), 25, 25);
+						}
+						rtx.font = "22px Courier";
+						rtx.fillStyle = "black";
+						if(player.army[i][7] == 0){
+							rtx.fillText(infWeapons[player.army[i][4]].name + " Band", 90, 125+((i-aShift)*60))
+						}
+						if(player.army[i][7] == 1){
+							rtx.fillText(archWeapons[player.army[i][4]].name + " Company", 80, 125+((i-aShift)*60))
+						}
+						if(player.army[i][7] == 2){
+							rtx.fillText(cavWeapons[player.army[i][4]].name + " Riders", 80, 125+((i-aShift)*60))
+						}
+					}
+					if(player.army.length > 7){
+						rtx.fillStyle = "red";
+						rtx.fillRect(95, 570, 20, 20);
+						rtx.fillStyle = "green";
+						rtx.fillRect(245, 570, 20, 20);
+					}
+					if(event.type == "mousedown" && event.which == 1){
+						if(y > 100 && y < 100+60*Math.min(player.army.length, 7)){
+							if(x >= 70){
+								aSel = Math.floor((y - 100)/60);
+							}
+							else if(x > 0){
+								var w = sels.indexOf(Math.floor((y - 100)/60));
+								if(w == -1){
+									sels.push(Math.floor((y - 100)/60));
+								}
+								else{
+									sels.splice(w, 1);
+								}
+							}
+						}
+						if(y > 560 && y < 600 && player.army.length > 7){
+							if(x > 95 && x < 265){
+								if(x < 120 && aShift > 0){
+									aShift--;
+								}
+								else if(x >= 240 && aShift + 7 < player.army.length){
+									aShift++;
+								}
+							}
+						}
+						else if(x > 0 && y > 600 && y < 640){
+							sels = []
+							view = "";
+						}
+						delta = true;
+					}
+				}
+				else{
+					rtx.fillText("Size: " + player.army[aSel][0], 20, 100);
+					rtx.fillText("Offense: " + player.army[aSel][1] , 20, 130);
+					rtx.fillText("Defense: " + player.army[aSel][2], 20, 160);
+					rtx.fillText("Discipline: " + player.army[aSel][3] , 20, 190);
+					rtx.fillText("Training Left: " + player.army[aSel][6] + "xp", 40, 220);
+						rtx.fillText("Weapon 1: " + weapons[player.army[aSel][7]][player.army[aSel][4]].name, 20, 310);
+						rtx.fillText("Atk: " + weapons[player.army[aSel][7]][player.army[aSel][4]].attack, 20, 330);
+						rtx.fillText("Def: " + weapons[player.army[aSel][7]][player.army[aSel][4]].defense, 20, 350);
+						rtx.fillText("Range: " + weapons[player.army[aSel][7]][player.army[aSel][4]].range, 20, 370);
+						if(weapons[player.army[aSel][7]][player.army[aSel][4]].hands == 1){
+							rtx.fillText("Weapon 2: " + weapons[player.army[aSel][7]][player.army[aSel][5]].name, 20, 400);
+							rtx.fillText("Atk: " + weapons[player.army[aSel][7]][player.army[aSel][5]].attack, 20, 420);
+							rtx.fillText("Def: " + weapons[player.army[aSel][7]][player.army[aSel][5]].defense, 20, 440);
+							rtx.fillText("Range: " + weapons[player.army[aSel][7]][player.army[aSel][5]].range, 20, 460);
+						}
+					rtx.fillText("Commander: " + player.army[aSel][9][4], 90, 500);
+					if(player.army[aSel][9][3] == 0){
+						rtx.fillText("M", 320, 500);
+					}
+					else{
+						rtx.fillText("F", 320, 500);
+					}
+					if(player.army[aSel][9][0] < 4){
+						rtx.fillStyle = "#8C7853";
+					}
+					else if(player.army[aSel][9][0] < 5){
+						rtx.fillStyle = "#E6E8FA";
+					}
+					else{
+						rtx.fillStyle = "#CFB53B";
+					}
+					for(i = 0; i < player.army[aSel][9][0]; i++){
+						rtx.fillRect(20 + (i * 8), 480, 5, 25);
+					}
+					rtx.fillStyle = "black";
+					rtx.fillText("Experimentality: " + player.army[aSel][9][1], 20, 540);
+					rtx.fillText("Experience: " + player.army[aSel][9][2], 20, 560);
+					if(event.type == "mousedown" && event.which == 1){
+						if(y > 600 && y < 640){
+							aSel = -1;
+						}
+						delta = true;
+					}
+				}	
+			}
+		}
+		else if(tab == "selected"){
+			if(vew == ""){
+				rtx.strokeRect(180, rect.height-61, 85, 60);
+				rtx.font = "15px Courier"
+				rtx.fillText("Development:" + Math.floor(player.tileSelected.development), 2, 80);
+				if(player.tileSelected != 0 && player.tileSelected.city != 0){
+					rtx.fillText("Defense:" + player.tileSelected.city.defense, 138, 80);
+					rtx.fillText("Loyalty:" + player.tileSelected.city.loyalty, 240, 80);
+					rtx.fillText("Mayor: ", 10, 120);
+					rtx.strokeRect(80, 95, 200, 40);
+					rtx.strokeStyle = "black";
+					if(player.court[player.tileSelected.city.mayor][0] < 4){
+						rtx.fillStyle = "#8C7853";
+					}
+					else if(player.court[player.tileSelected.city.mayor][0] < 5){
+						rtx.fillStyle = "#E6E8FA";
+					}
+					else{
+						rtx.fillStyle = "#CFB53B";
+					}
+					for(i = 0; i < player.court[player.tileSelected.city.mayor][0]; i++){
+						rtx.fillRect(90 + (i * 8), 100, 5, 25);
+					}
+					rtx.fillStyle = "black";
+					rtx.font = "15px Courier";
+					rtx.fillText("Garrison", 240, 565)
+					rtx.strokeRect(230, 553, 100, 18);
+					rtx.fillStyle = "black";
+					rtx.font = "17px Calibri";
+					if(player.tileSelected.owner == turn){
+						rtx.fillText(getTitle(player.court[player.tileSelected.city.mayor][4],player.court[player.tileSelected.city.mayor][2]) + " " + player.court[player.tileSelected.city.mayor][1], 150, 120);
+						if(player.tileSelected.city.mayor == 0){
+							rtx.fillStyle = "gold";
+							rtx.fillRect(300, 95, 40, 40);
+							rtx.fillStyle = "green";
+							rtx.fillRect(310, 105, 20, 20);
+						}
+						rtx.strokeRect(10, 150, 170, 200);
+						rtx.strokeRect(10, 350, 170, 200);
+						rtx.strokeRect(180, 150, 170, 200);
+						rtx.strokeRect(180, 350, 170, 200);
+						rtx.fillStyle = "#98FB98";
+						rtx.fillRect(10, 150, 170, 200);
+						rtx.fillStyle = "#ffbcbc";
+						rtx.fillRect(10, 350, 170, 200);
+						rtx.fillStyle = "#98AFC7";
+						rtx.fillRect(180, 150, 170, 200);
+						rtx.fillStyle = "#FFFFE0";
+						rtx.fillRect(180, 350, 170, 200);
+						rtx.fillStyle = "saddlebrown";
+						if(player.resources[0] < 4 || player.resources[4] < 5){
+							rtx.strokeStyle = "red";
+						}
+						else{ rtx.strokeStyle = "black"; }
+						rtx.fillRect(170, 340, 20, 20);
+						rtx.strokeRect(170, 340, 20, 20);
+						rtx.fillStyle = "grey";
+						for(ry = Math.PI/4; ry < Math.PI/4 + 2*Math.PI; ry += Math.PI/2){
+							var tInd = getIndex(1, 165 + 100*Math.cos(ry), 335 + 100*Math.sin(ry));
+							if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[0][0] != 0){
+								rtx.fillStyle = "saddlebrown";
+							}
+							else{ rtx.fillStyle = "grey"; }
+							if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[1][tInd] != 0){
+								rtx.fillStyle = "green";
+							}
+							if(player.resources[0] < buildings[1][tInd].cost[0] || player.resources[1] < buildings[1][tInd].cost[1]|| player.resources[2] < buildings[1][tInd].cost[2]|| player.resources[4] < buildings[1][tInd].cost[3]){
+								rtx.strokeStyle = "red";
+							}
+							else{ rtx.strokeStyle = "black"; }
+							rtx.fillRect(165 + 50*Math.cos(ry), 335 + 50*Math.sin(ry), 30, 30);rtx.strokeRect(165 + 50*Math.cos(ry), 335 + 50*Math.sin(ry), 30, 30);
+						}
+						for(ry = Math.PI/8; ry < Math.PI/8 + 2*Math.PI; ry += Math.PI/4){
+							tInd = getIndex(2, 165 + 100*Math.cos(ry), 335 + 100*Math.sin(ry));
+							if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[1][Math.floor(tInd/2)] != 0){
+								rtx.fillStyle = "saddlebrown";
+							}
+							else{ rtx.fillStyle = "grey"; }
+							if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[2][tInd] != 0){
+								rtx.fillStyle = "green";
+							}
+							if(player.resources[0] < buildings[2][tInd].cost[0] || player.resources[1] < buildings[2][tInd].cost[1]|| player.resources[2] < buildings[2][tInd].cost[2]|| player.resources[4] < buildings[2][tInd].cost[3]){
+								rtx.strokeStyle = "red";
+							}
+							else{ rtx.strokeStyle = "black"; }
+							rtx.fillRect(165 + 100*Math.cos(ry), 335 + 100*Math.sin(ry), 30, 30);
+							rtx.strokeRect(165 + 100*Math.cos(ry), 335 + 100*Math.sin(ry), 30, 30);
+						}
+						for(ry = Math.PI/20; ry < Math.PI/20 + 2*Math.PI; ry += Math.PI/10){
+							tInd = getIndex(3, 165 + 150*Math.cos(ry), 335 + 150*Math.sin(ry));
+							if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[2][Math.floor(tInd/2.5)] != 0){
+								rtx.fillStyle = "saddlebrown";
+							}
+							else{ rtx.fillStyle = "grey"; }
+							if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[3][tInd] != 0){
+								rtx.fillStyle = "green";
+							}
+							if(player.resources[0] < buildings[3][tInd].cost[0] || player.resources[1] < buildings[3][tInd].cost[1]|| player.resources[2] < buildings[3][tInd].cost[2]|| player.resources[4] < buildings[3][tInd].cost[3]){
+								rtx.strokeStyle = "red";
+							}
+							else{ rtx.strokeStyle = "black"; }
+							rtx.fillRect(165 + 150*Math.cos(ry), 335 + 150*Math.sin(ry), 30, 30);
+							rtx.strokeRect(165 + 150*Math.cos(ry), 335 + 150*Math.sin(ry), 30, 30);
+						}
+						for(t = 0; t < buildings[4].length; t++){
+							rtx.fillStyle = "saddlebrown";
+							if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[4][t] != 0){
+								rtx.fillStyle = "green";
+							}
+							if(player.resources[0] < buildings[4][t].cost[0] || player.resources[1] < buildings[4][t].cost[1]|| player.resources[2] < buildings[4][t].cost[2]|| player.resources[4] < buildings[4][t].cost[4]){
+								rtx.strokeStyle = "red";
+							}
+							else{ rtx.strokeStyle = "black"; }
+							rtx.fillRect(15 + 50*t,560,  30, 30);
+							rtx.strokeRect(15 + 50*t,560,  30, 30)
+						}
+						
+						rtx.strokeStyle = "black";
+						rtx.fillStyle = "black";
+						rtx.fillText("Social", 15, 175);
+						rtx.fillText("Defense", 260, 175);
+						rtx.fillText("Offense", 15, 540);
+						rtx.fillText("Economic", 260, 540);
+						if(firstClick){
+							rtx.fillText("Click Again to Generate a Baron for this City", 15, 615);
+						}
+						if(event.type == "mousedown" && event.which == 1 ){
+							if(y > 150 && y < 550 && x > 10 && x < 350){
+								firstClick = false;
+								var dist = Math.sqrt(Math.pow((x - 180), 2) + Math.pow((y-350), 2));
+								//console.log(dist);
+								if(dist < 190){
+									if(dist < 25){
+										tier = 0;
+									}
+									else if(dist < 75){
+										tier = 1;
+									}
+									else if(dist < 130){
+										tier = 2;
+									}
+									else { tier = 3 };
+									//console.log(ix);
+									//console.log(iy);
+									index = getIndex(tier, x, y);
+								}
+							}
+							else if(player.tileSelected.city.mayor == 0 && x > 300 && x < 340 && y < 135 && y > 90){
+								if(firstClick){
+									var n = genNoble(2);
+									n[0] = player.court[0][0] + Math.floor(Math.random() * (8 - player.court[0][0]))
+									player.court.push(n);
+									map[player.tileSelected.y][player.tileSelected.x].city.mayor = player.court.length -1;
+									delta = true;
+									courtChange();
+									tileChange(player.tileSelected.y, player.tileSelected.x, turn, 0);
+									firstClick = false;
+								}
+								else{
+									rtx.fillText("Click Again to Generate a Baron for this City", 15, 615);
+									firstClick = true;
+									tier = -1;
+									index = -1;
+								}
+							}
+							else if(y >= 555 && x > 230 && x < 330 && y < 560){
+								index = -1
+								tier = -1;
+								vew = "garrison";
+							}	
+							else {
+								firstClick = false;
+								if(y < 590 & y > 560 && x < 220){
+									tier = 4;
+									index = Math.floor((x-15)/50);
+								}
+							}
+							delta = true;
+						}
+						if(index > -1){
+							if(tier == 0){
+								index = 0;
+							}
+							rtx.font = "18px Courier";
+							rtx.fillText(buildings[tier][index].name, 15, 610);
+							rtx.font = "13px Courier";
+							rtx.fillText(buildings[tier][index].description, 5, 630);
+							rtx.strokeStyle = "black";
+							rtx.font = "24px Courier";
+							rtx.fillStyle = "black";
+							if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[tier][index] == 0){
+								if(player.resources[0] < buildings[tier][index].cost[0] || player.resources[1] < buildings[tier][index].cost[1]|| player.resources[2] < buildings[tier][index].cost[2]|| player.resources[4] < buildings[tier][index].cost[3]){
+									rtx.strokeStyle = "red";
+									rtx.fillStyle = "grey";
+									rtx.fillText("Buy", 245, 600)
+								}
+								else{ rtx.fillText("Buy", 245, 600); }
+								rtx.strokeRect(220, 575, 100, 40);
+									
+								if(event.type == "mousedown" && event.which == 1){
+									if(x > 219 && y > 564 && y < 605 && x < 320){
+										if(!(player.resources[0] < buildings[tier][index].cost[0] || player.resources[1] < buildings[tier][index].cost[1]|| player.resources[2] < buildings[tier][index].cost[2]|| player.resources[4] < buildings[tier][index].cost[3])){
+											var pay = false;
+											if(tier == 0){
+												pay = true;
+												player.taxChange = true;
+												map[player.tileSelected.y][player.tileSelected.x].city.buildings[tier][index] = buildings[tier][index];
+											}
+											else if(tier == 1){
+												if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[0][0] != 0){
+													map[player.tileSelected.y][player.tileSelected.x].city.buildings[tier][index] = buildings[tier][index]; 
+													pay = true;
+												}
+											}
+											else if(tier == 2){
+												if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[1][Math.floor(index/2)] != 0){
+													map[player.tileSelected.y][player.tileSelected.x].city.buildings[tier][index] = buildings[tier][index]; 
+													pay = true;
+												}
+											}
+											else if(tier == 3){
+												if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[2][Math.floor(index/2.5)] != 0){
+													map[player.tileSelected.y][player.tileSelected.x].city.buildings[tier][index] = buildings[tier][index];
+													pay = true;
+												}
+											}
+											else if(tier == 4){
+												if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[4][index] == 0){
+													map[player.tileSelected.y][player.tileSelected.x].city.buildings[tier][index] = buildings[tier][index];
+													pay = true;
+												}
+											}
+											if(pay){
+												player.resources[0] -= buildings[tier][index].cost[0];
+												player.resources[1] -= buildings[tier][index].cost[1];
+												player.resources[2] -= buildings[tier][index].cost[2];
+												player.resources[4] -= buildings[tier][index].cost[3];
+												buildings[tier][index].effect();
+												wellChange();
+												resChange();
+												devChange();
+												tileChange(player.tileSelected.y, player.tileSelected.x, turn, 0);
+												drawDelta = true;
+											}
+										}
+									}
+								}
+							}
+							else{
+								var ck = false;
+								if(tier == 1 && index == 1){
+									ck = true;
+								}
+								else if(tier == 2 && index == 2){
+									ck = true;
+								}
+								else if(tier == 3 && index == 2 || index == 4 || index == 5 || index == 6 || index == 7 || index == 8 || index == 9 || index == 13 || index == 14){
+									ck = true;
+								}
+								else if(tier == 4 && index == 1){
+									ck = true;
+								}
+								if(ck){
+									rtx.fillText("Go To", 235, 600); 
+									rtx.strokeRect(220, 575, 100, 40);
+								}
+								if(event.type == "mousedown" && event.which == 1 && y >= 575 && y < 615 && x > 220 && x < 320){
+									if(tier == 1){
+										tab = "recruiting";
+									}
+									else if(tier == 2){
+										tab = "customizing";
+										if(index == 2){
+											cust = "infantry";
+											curUnit = [0, 0, 0, 0, 0, 1, 0, 0];
+											pts = 5;
+											if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[2][3] != 0){
+												pts += 5;
+											}
+										}
+									}
+									else if(tier == 3){
+										if(index == 2){
+											tab = "market";
+										}
+										else if(index == 4){
+											tab = "bank";
+										}
+										else if(index == 5){
+											tab = "customizing";
+											cust = "archers";
+											curUnit = [0, 0, 0, 0, 0, 1, 0, 0];
+											pts = 5;
+											if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[2][3] != 0){
+												pts += 5;
+											}
+										}
+										else if(index == 6){
+											tab = "customizing";
+											cust = "cavalry";
+											curUnit = [0, 0, 0, 0, 0, 1, 0, 0];
+											pts = 5;
+											if(map[player.tileSelected.y][player.tileSelected.x].city.buildings[2][3] != 0){
+												pts += 5;
+											}
+										}
+										else if(index == 7){
+											tab = "academy";
+										}
+										else if(index == 8){
+											tab = "mercyard"
+										}
+										else if(index == 9){
+											tab = "recruiting"
+										}
+										else if(index == 13 || index == 14){
+											tab = "estates"
+										}
+									}
+									else if(tier == 4){
+										if(index == 1){
+											tab = "customizing"
+											cust = "navy";
+											curShip = [0, 0, 0, 0, 0];
+											pts = 10;
+										}
+									}
+									delta = true;
+								}
+							}
+						}
+						rtx.strokeStyle = "black";
+					}
+					else{
+						rtx.fillText("Unknown", 150, 120);
+					}
+				}
+				else{
+					if(player.tileSelected.armies.length > 0){
+						if(player.tileSelected.armies.length > 0 && gSel == -1){
+							for(i = 0; i < Math.min(4, player.tileSelected.armies.length); i++){
+								rtx.strokeRect(70, 100+(i*60), 220, 50);
+								rtx.fillStyle  = "black";
+								rtx.font = "22px Courier";
+								if(player.tileSelected.armies[i][7] == 0){
+									rtx.fillText(infWeapons[player.tileSelected.armies[i][4]].name + " Band", 90, 125+((i-aShift)*60))
+								}
+								if(player.tileSelected.armies[i][7] == 1){
+									rtx.fillText(archWeapons[player.tileSelected.armies[i][4]].name + " Company", 80, 125+((i-aShift)*60))
+								}
+								if(player.tileSelected.armies[i][7] == 2){
+									rtx.fillText(cavWeapons[player.tileSelected.armies[i][4]].name + " Riders", 80, 125+((i-aShift)*60))
+								}
+							}
+						}
+						else if(gSel > -1 && gSel < 4){
+							rtx.fillText("Back", 158, 620);
+							rtx.fillText("Size: " + player.tileSelected.armies[gSel][0], 20, 100);
+							rtx.fillText("Offense: " + player.tileSelected.armies[gSel][1] , 20, 130);
+							rtx.fillText("Defense: " + player.tileSelected.armies[gSel][2], 20, 160);
+							rtx.fillText("Discipline: " + player.tileSelected.armies[gSel][3] , 20, 190);
+							rtx.fillText("Training Left: " + player.tileSelected.armies[gSel][6] + "xp", 40, 220);
+							rtx.fillText("Weapon 1: " + weapons[player.tileSelected.armies[gSel][7]][player.tileSelected.armies[gSel][4]].name, 20, 310);
+							rtx.fillText("Atk: " + weapons[player.tileSelected.armies[gSel][7]][player.tileSelected.armies[gSel][4]].attack, 20, 330);
+							rtx.fillText("Def: " + weapons[player.tileSelected.armies[gSel][7]][player.tileSelected.armies[gSel][4]].defense, 20, 350);
+							rtx.fillText("Range: " + weapons[player.tileSelected.armies[gSel][7]][player.tileSelected.armies[gSel][4]].range, 20, 370);
+							if(weapons[player.tileSelected.armies[gSel][7]][player.tileSelected.armies[gSel][4]].hands == 1){
+								rtx.fillText("Weapon 2: " + weapons[player.tileSelected.armies[gSel][7]][player.tileSelected.armies[gSel][5]].name, 20, 400);
+								rtx.fillText("Atk: " + weapons[player.tileSelected.armies[gSel][7]][player.tileSelected.armies[gSel][5]].attack, 20, 420);
+								rtx.fillText("Def: " + weapons[player.tileSelected.armies[gSel][7]][player.tileSelected.armies[gSel][5]].defense, 20, 440);
+								rtx.fillText("Range: " + weapons[player.tileSelected.armies[gSel][7]][player.tileSelected.armies[gSel][5]].range, 20, 460);
+							}
+							rtx.fillText("Commander: " + player.tileSelected.armies[gSel][9][4], 90, 500);
+							if(player.tileSelected.armies[gSel][9][3] == 0){
+								rtx.fillText("M", 320, 500);
+							}
+							else{
+								rtx.fillText("F", 320, 500);
+							}
+							if(player.tileSelected.armies[gSel][9][0] < 4){
+								rtx.fillStyle = "#8C7853";
+							}
+							else if(player.tileSelected.armies[gSel][9][0] < 5){
+								rtx.fillStyle = "#E6E8FA";
+							}
+							else{
+								rtx.fillStyle = "#CFB53B";
+							}
+							for(i = 0; i < player.tileSelected.armies[gSel][9][0]; i++){
+								rtx.fillRect(20 + (i * 8), 480, 5, 25);
+							}
+							rtx.fillStyle = "black";
+							rtx.fillText("Experimentality: " + player.tileSelected.armies[gSel][9][1], 20, 540);
+							rtx.fillText("Experience: " + player.tileSelected.armies[gSel][9][2], 20, 560);
+						}
+						if(event.type == "mousedown"){
+							if(event.which == 1){
+								if(y > 100 && y < 100+60*Math.min(player.tileSelected.armies.length, 4)){
+									if(x >= 70){
+										gSel = Math.floor((y - 100)/60);
+									}
+								}
+								else if(y > 600 && y < 640){
+									if(gSel > -1){
+										gSel = -1;
+									}
+								}
+									delta = true;
+							}
+						}
+					}
+				}
+			}
+			else if(vew == "garrison"){
+				rtx.fillText("Back", 158, 620);
+				if(player.tileSelected.city.garrison.length > 0 && gSel == -1){
+					for(i = aShift; i < Math.min(7, player.tileSelected.city.garrison.length); i++){
+						rtx.strokeRect(70, 100+((i-aShift)*60), 220, 50);
+						rtx.font = "22px Courier";
+						if(player.tileSelected.city.garrison[i][7] == 0){
+							rtx.fillText(infWeapons[player.tileSelected.city.garrison[i][4]].name + " Band", 90, 125+((i-aShift)*60))
+						}
+						if(player.tileSelected.city.garrison[i][7] == 1){
+							rtx.fillText(archWeapons[player.tileSelected.city.garrison[i][4]].name + " Company", 80, 125+((i-aShift)*60))
+						}
+						if(player.tileSelected.city.garrison[i][7] == 2){
+							rtx.fillText(cavWeapons[player.tileSelected.city.garrison[i][4]].name + " Riders", 80, 125+((i-aShift)*60))
+						}
+					}
+				}
+				else if(gSel > -1 && gSel < player.tileSelected.city.garrison.length){
+					rtx.fillText("Size: " + player.tileSelected.city.garrison[gSel][0], 20, 100);
+					rtx.fillText("Offense: " + player.tileSelected.city.garrison[gSel][1] , 20, 130);
+					rtx.fillText("Defense: " + player.tileSelected.city.garrison[gSel][2], 20, 160);
+					rtx.fillText("Discipline: " + player.tileSelected.city.garrison[gSel][3] , 20, 190);
+					rtx.fillText("Training Left: " + player.tileSelected.city.garrison[gSel][6] + "xp", 40, 220);
+						rtx.fillText("Weapon 1: " + weapons[player.tileSelected.city.garrison[i][7]][player.tileSelected.city.garrison[gSel][4]].name, 20, 310);
+						rtx.fillText("Atk: " + weapons[player.tileSelected.city.garrison[i][7]][player.tileSelected.city.garrison[gSel][4]].attack, 20, 330);
+						rtx.fillText("Def: " + weapons[player.tileSelected.city.garrison[i][7]][player.tileSelected.city.garrison[gSel][4]].defense, 20, 350);
+						rtx.fillText("Range: " + weapons[player.tileSelected.city.garrison[i][7]][player.tileSelected.city.garrison[gSel][4]].range, 20, 370);
+						if(weapons[player.tileSelected.city.garrison[i][7]][player.tileSelected.city.garrison[gSel][4]].hands == 1){
+							rtx.fillText("Weapon 2: " + weapons[player.tileSelected.city.garrison[i][7]][player.tileSelected.city.garrison[gSel][5]].name, 20, 400);
+							rtx.fillText("Atk: " + weapons[player.tileSelected.city.garrison[i][7]][player.tileSelected.city.garrison[gSel][5]].attack, 20, 420);
+							rtx.fillText("Def: " + weapons[player.tileSelected.city.garrison[i][7]][player.tileSelected.city.garrison[gSel][5]].defense, 20, 440);
+							rtx.fillText("Range: " + weapons[player.tileSelected.city.garrison[i][7]][player.tileSelected.city.garrison[gSel][5]].range, 20, 460);
+						}
+					rtx.fillText("Commander: " + player.tileSelected.city.garrison[gSel][9][4], 90, 500);
+					if(player.tileSelected.city.garrison[gSel][9][3] == 0){
+						rtx.fillText("M", 320, 500);
+					}
+					else{
+						rtx.fillText("F", 320, 500);
+					}
+					if(player.tileSelected.city.garrison[gSel][9][0] < 4){
+						rtx.fillStyle = "#8C7853";
+					}
+					else if(player.tileSelected.city.garrison[gSel][9][0] < 5){
+						rtx.fillStyle = "#E6E8FA";
+					}
+					else{
+						rtx.fillStyle = "#CFB53B";
+					}
+					for(i = 0; i < player.tileSelected.city.garrison[gSel][9][0]; i++){
+						rtx.fillRect(20 + (i * 8), 480, 5, 25);
+					}
+					rtx.fillStyle = "black";
+					rtx.fillText("Experimentality: " + player.tileSelected.city.garrison[gSel][9][1], 20, 540);
+					rtx.fillText("Experience: " + player.tileSelected.city.garrison[gSel][9][2], 20, 560);
+				}
+				else{
+					rtx.fillText("No Units Garrisoned", 75, 80);
+				}
+				if(event.type == "mousedown" && event.which == 1){
+					if(y > 100 && y < 100+60*Math.min(player.army.length, 7)){
+						gSel = Math.floor((y - 100)/60);
+					}
+					else if(y > 600 && y < 640){
+						if(gSel > -1){
+							gSel = -1;
+						}
+						else{
+							vew = "";
+						}
+					}
+					delta = true;
+				}
+			}
+		}
+		else if(tab == "summary"){
+			rtx.font = "17px Courier";
+			rtx.strokeRect(265, rect.height-62, 95, 60);
+			rtx.strokeRect(10, 110, 200, 50);
+			rtx.strokeRect(240, 110, 80, 40);
+			rtx.fillText("Centralization: " + Math.floor(cen()/2) + "%", 10, 100);
+			rtx.fillStyle = "grey";
+			rtx.fillRect(10, 110, cen(), 50);
+			rtx.fillStyle = "black";
+			rtx.font = "16px Courier";
+			rtx.fillText("Desired:", 240, 100);
+			rtx.font = "36px Courier";
+			rtx.fillText(Math.floor(calcAvgCen()), 245, 140);
+			rtx.font = "18px Courier";
+			if(event.type == "mousedown" && event.which == 1 && player.taxChange && y > 300 && y < 420 && x > 0 && x < rect.width){
+				taxSelected = Math.floor((y - 300)/30);
+			}
+			rtx.fillStyle = "black";
+			rtx.fillText("Wood Tax: ", 15, 330);
+			rtx.fillText("Stone Tax: ", 15, 360);
+			rtx.fillText("Gold Tax: ", 15, 390);
+			rtx.fillText("Ore Tax: ", 15, 420);
+			
+			for(i = 0; i < 4; i++){
+				rtx.fillStyle = "black";
+				if(newTaxes[i] > oldTaxes[i]){
+					rtx.fillStyle = "red";
+				}
+				else if(oldTaxes[i] > newTaxes[i]){
+					rtx.fillStyle = "lime";
+				}
+				rtx.fillText(Math.floor((oldTaxes[i] - newTaxes[i])/3), 260, 330 + (30 * i));
+				if(taxSelected == i){
+					rtx.fillStyle = "lime";	
+				}
+				else{ rtx.fillStyle = "black"; }
+				rtx.fillText(newTaxes[i], 160, 330 + (30*i));
+			}
+			
+			rtx.fillStyle = "black";
+			rtx.strokeRect(90, 430, 70, 30);
+			rtx.fillText("Save", 100, 450);
+			if(event != 0 && event.type == "mousedown" && event.which == 1){
+				delta = true;
+				if(y < 450 && x > 90 && x < 160){
+					player.taxes = newTaxes.slice();
+					for(i = 0; i < 4; i++){
+						player.wellBeing[0] -= (player.taxes[i] - oldTaxes[i])/3;
+					}
+					oldTaxes = newTaxes.slice();
+					document.removeEventListener('keydown', drawRightBar);
+					taxChange();
+					wellChange();
+					taxSelected = -1;
+				}
+			}
+			if(taxSelected != -1){
+				document.addEventListener('keydown'	, drawRightBar);
+				if(event.keyCode >= 48 && event.keyCode <= 57){
+					var num = event.keyCode - 48;
+					if(newTaxes[taxSelected] == 0){
+						newTaxes[taxSelected] = num;
+					}
+					else if(newTaxes[taxSelected] + "" + num < 100){
+						newTaxes[taxSelected] += "" + num;
+					}
+					else{
+						newTaxes[taxSelected] = 100;
+					}
+					delta = true;
+				}
+				else if(event.keyCode == 8){
+					newTaxes[taxSelected] = Math.floor(newTaxes[taxSelected]/10);
+					delta = true;
+				}	
+			}
+		}
+		else if(tab == "market"){
+			
+		}
+		else if(tab == "bank"){
+			rtx.fillText("Take Loan", 30, 100);
+			rtx.strokeRect(25, 80, 100, 30);
+			rtx.fillText("Deposit", 130, 100);
+			rtx.strokeRect(125, 80, 100, 30);
+			if(event.type == "mousdown"){
+				if(y <= 110 && y >= 80){
+					if(x>25 && x < 125){
+						loaning = true;
+						depositing = false;
+					}
+					else if( x > 125 && x < 225){
+						depositing = true;
+						loaning = false;
+					}
+				}
+				else{
+					loaning = false;
+					depositing = false;
+				}
+			}
+			if(loaning){
+				depositing = false;
+			}
+			else if(depositing){
+				
+			}
+		}
+		else if(tab == "customizing"){
+			rtx.fillText("Points Remaining: " + pts, 10, 100);
+			if(cust == "infantry" || cust == "archers" || cust == "cavalry"){
+				if(cust == "infantry"){
+					curUnit[7] = 0;
+				}
+				else if(cust == "archers"){
+					curUnit[7] = 1;
+				}
+				else{
+					curUnit[7] = 2;
+				}
+				rtx.strokeRect(70, 123, 45, 27); 
+				rtx.fillText("Size: " + curUnit[0], 20, 140);
+				rtx.fillText("+ 10", 125, 140);
+				rtx.fillText("Offense: " + curUnit[1] , 20, 180);
+				rtx.fillText("Defense: " + curUnit[2], 20, 220);
+				rtx.fillText("Discipline: " + curUnit[3] , 20, 260);
+				if(cust == "infantry"){
+					rtx.fillText("Weapon 1: " + infWeapons[curUnit[4]].name, 20, 300);
+					rtx.fillText("Atk: " + infWeapons[curUnit[4]].attack, 20, 320);
+					rtx.fillText("Def: " + infWeapons[curUnit[4]].defense, 20, 340);
+					rtx.fillText("Range: " + infWeapons[curUnit[4]].range, 20, 360);
+				}
+				else if(cust == "archers"){
+					rtx.fillText("Weapon 1: " + archWeapons[curUnit[4]].name, 20, 300);
+					rtx.fillText("Atk: " + archWeapons[curUnit[4]].attack, 20, 320);
+					rtx.fillText("Def: " + archWeapons[curUnit[4]].defense, 20, 340);
+					rtx.fillText("Range: " + archWeapons[curUnit[4]].range, 20, 360);
+				}
+				else if(cust == "cavalry"){
+					rtx.fillText("Weapon 1: " + cavWeapons[curUnit[4]].name, 20, 300);
+					rtx.fillText("Atk: " + cavWeapons[curUnit[4]].attack, 20, 320);
+					rtx.fillText("Def: " + cavWeapons[curUnit[4]].defense, 20, 340);
+					rtx.fillText("Range: " + cavWeapons[curUnit[4]].range, 20, 360);
+				}
+				if(infWeapons[curUnit[4]].hands == 1){
+					if(cust == "infantry"){
+						rtx.fillText("Weapon 2: " + infWeapons[curUnit[5]].name, 20, 400);
+						rtx.fillText("Atk: " + infWeapons[curUnit[5]].attack, 20, 420);
+						rtx.fillText("Def: " + infWeapons[curUnit[5]].defense, 20, 440);
+						rtx.fillText("Range: " + infWeapons[curUnit[5]].range, 20, 460);
+					}
+					else if(cust == "archers"){
+						rtx.fillText("Weapon 2: " + archWeapons[curUnit[5]].name, 20, 400);
+						rtx.fillText("Atk: " + archWeapons[curUnit[5]].attack, 20, 420);
+						rtx.fillText("Def: " + archWeapons[curUnit[5]].defense, 20, 440);
+						rtx.fillText("Range: " + archWeapons[curUnit[5]].range, 20, 460);
+					}
+					else if(cust == "cavalry"){
+						rtx.fillText("Weapon 2: " + cavWeapons[curUnit[5]].name, 20, 400);
+						rtx.fillText("Atk: " + cavWeapons[curUnit[5]].attack, 20, 420);
+						rtx.fillText("Def: " + cavWeapons[curUnit[5]].defense, 20, 440);
+						rtx.fillText("Range: " + cavWeapons[curUnit[5]].range, 20, 460);
+					}
+					rtx.fillStyle = "#ff0000";
+					rtx.fillRect(200, 380, 20, 20)
+					rtx.fillStyle = "#d0f0c0";
+					rtx.fillRect(240, 380, 20, 20)
+					rtx.fillStyle = "black";
+					rtx.fillRect(202, 390, 16, 1);
+					rtx.fillRect(242, 390, 16, 1);
+					rtx.fillRect(250, 383, 1, 14);
+				}
+				for(i = 1; i < 5; i++){
+					rtx.fillStyle = "#ff0000";
+					rtx.fillRect(200, 120 + (40*i), 20, 20)
+					rtx.fillStyle = "#d0f0c0";
+					rtx.fillRect(240, 120 + (40*i), 20, 20)
+					rtx.fillStyle = "black";
+					rtx.fillRect(202, 130 + (40*i), 16, 1);
+					rtx.fillRect(242, 130 + (40*i), 16, 1);
+					rtx.fillRect(250, 123 + (40*i), 1, 14);
+				}
+				var costs = [(curUnit[0] + 10), (0), (curUnit[0]/2), (curUnit[1] + curUnit[2] + 3*curUnit[3])];
+					costs[1] += weapons[curUnit[7]][curUnit[4]].cost[0] * costs[0];
+					costs[2] += weapons[curUnit[7]][curUnit[4]].cost[1] * costs[0];
+					costs[3] += weapons[curUnit[7]][curUnit[4]].attack + weapons[curUnit[7]][curUnit[5]].defense;
+				if(infWeapons[curUnit[4]].hands == 1){
+					costs[1] += weapons[curUnit[7]][curUnit[5]].cost[0] * costs[0];
+					costs[2] += weapons[curUnit[7]][curUnit[5]].cost[1] * costs[0];
+					costs[3] += weapons[curUnit[7]][curUnit[5]].attack + weapons[curUnit[7]][curUnit[5]].defense;
+				}
+				rtx.fillText("Costs", 10, 505);
+				rtx.fillText("Manpower: " + costs[0], 40, 525);
+				rtx.fillText("Wood: " + Math.floor(10*costs[1])/10, 40, 545 );
+				rtx.fillText("Gold: " + Math.floor(10*costs[2])/10, 40, 565);
+				rtx.fillText("Training: " + costs[3], 40, 585);
+				if(map[player.tileSelected.y][player.tileSelected.x].city.garrison.length < 7){
+					rtx.fillStyle = "#DCDCDC";
+					rtx.fillRect(200, 535, 125, 50);
+					rtx.fillStyle = "black"
+					rtx.font = "24px Courier";
+					rtx.fillText("Create", 215, 565);
+				}
+				else{
+					rtx.fillText("Garrison Full", 180, 565);
+				}
+				
+				if(event.type == "mousedown" && event.which == 1 && y > 60 && y < 430){
+					if(y>= 123 && y <= 150){
+						document.addEventListener('keydown', drawRightBar);
+					}
+					else if(y > 160 && y < 280){
+						if(x > 200 && x < 260){
+							if(x < 235){
+								if(curUnit[Math.floor((y - 120)/40)] > 0){
+									curUnit[Math.floor((y - 120)/40)]--;
+									pts++;
+								}
+							}
+							else if(x < 260){
+								if(pts > 0){
+									curUnit[Math.floor((y - 120)/40)]++;
+									pts--;
+								}
+							}
+						}
+					}
+					else if(y >= 280 && y < 355){
+						if(x < 235){
+							curUnit[4]--;
+						}
+						else if(x < 260){
+							curUnit[4]++;
+						}
+						if(cust == "infantry"){
+							if(curUnit[4] < 0){ curUnit[4] = infWeapons.length-1; }
+							if(curUnit[4] > infWeapons.length-1){ curUnit[4] = 0; }
+						}
+						else if(cust == "archers"){
+							if(curUnit[4] < 0){ curUnit[4] = archWeapons.length-1; }
+							if(curUnit[4] > archWeapons.length-1){ curUnit[4] = 0; }
+						}
+						else if(cust == "cavalry"){
+							if(curUnit[4] < 0){ curUnit[4] = cavWeapons.length-1; }
+							if(curUnit[4] > cavWeapons.length-1){ curUnit[4] = 0; }
+						}
+					}
+					else if(y < 415){
+						if(x < 235){
+							curUnit[5]--;
+							while(curUnit[5] < 0 || (cust == "infantry" && infWeapons[curUnit[5]].hands == 2) || (cust == "archers" && archWeapons[curUnit[5]].hands == 2) || (cust == "cavalry" && cavWeapons[curUnit[5]].hands == 2)){
+								curUnit[5]--;
+								if(curUnit[5] < 0){
+									if(cust == "infantry"){
+										curUnit[5] = infWeapons.length-1;
+									}
+									else if(cust == "archers"){
+										curUnit[5] = archWeapons.length-1;
+									}
+									else{
+										curUnit[5] = cavWeapons.length-1;
+									}
+								}
+							}
+						}
+						else if(x < 260){
+							curUnit[5]++;
+							if(cust == "infantry"){
+								while(curUnit[5] > infWeapons.length-1 || infWeapons[curUnit[5]].hands == 2){
+									curUnit[5]++;
+									if(curUnit[5] > infWeapons.length-1){
+										curUnit[5] = 0;
+									}
+								}
+							}
+							else if(cust == "archers"){
+								while(curUnit[5] > archWeapons.length-1 || archWeapons[curUnit[5]].hands == 2){
+									curUnit[5]++;
+									if(curUnit[5] > archWeapons.length-1){
+										curUnit[5] = 0;
+									}
+								}
+							}
+							else if(cust == "cavalry"){
+								while(curUnit[5] > cavWeapons.length-1 || cavWeapons[curUnit[5]].hands == 2){
+									curUnit[5]++;
+									if(curUnit[5] > cavWeapons.length-1){
+										curUnit[5] = 0;
+									}
+								}
+							}
+						}
+					}
+					delta = true;
+				}
+				else if(event.type == 'keydown'){
+					if(event.keyCode >= 48 && event.keyCode <= 57){
+						if(curUnit[0] == 0){
+							curUnit[0] = event.keyCode-48;
+						}
+						else if((10*curUnit[0] + event.keyCode-48) <= player.resources[4] && curUnit[0] < 999) {
+							curUnit[0] *= 10;
+							curUnit[0] +=event.keyCode-48;
+						}
+						else{ curUnit[0] = Math.floor(player.resources[4]) }
+					}
+					else if(event.keyCode == 8){
+						curUnit[0] = Math.floor(curUnit[0]/10);
+					}
+					delta = true;
+				}
+				else if(event.type == 'mousedown'){
+					if(y >= 535 && x >= 200 && x < 325 && y < 585 && map[player.tileSelected.y][player.tileSelected.x].city.garrison.length < 7){
+						if(player.resources[4] > costs[0] && player.resources[0] > costs[1] && player.resources[2] > costs[2]){
+							player.resources[4] -= costs[0];
+							player.resources[0] -= costs[1];
+							player.resources[2] -= costs[2];
+							resChange();
+							curUnit[0] += 10;
+							curUnit[6] = costs[3];
+							curUnit.push([[player.tileSelected.y, player.tileSelected.x]])
+							curUnit.push(genCommander(0));
+							curUnit.push(turn);
+							curUnit.push(player.army.length);
+							map[player.tileSelected.y][player.tileSelected.x].city.garrison.push(curUnit);
+							player.army.push(curUnit);
+							tileChange(player.tileSelected.y, player.tileSelected.x, turn, 0);
+							armyChange(player.army.length-1);
+							tab = "military"
+						}
+					}
+					document.removeEventListener('keydown', drawRightBar);
+				}
+			}
+			else if(cust == "navy"){
+				rtx.fillText("Durability: " + curShip[0], 20, 140);
+				rtx.fillText("Attack: " + curShip[1] , 20, 180);
+				rtx.fillText("Speed: " + curShip[2], 20, 220);
+				rtx.fillText("Development: " + curShip[3] , 20, 260);
+				rtx.fillText("Capacity: " + curShip[4], 20, 300);
+				for(i = 0; i < 5; i++){
+					rtx.fillStyle = "#ff0000";
+					rtx.fillRect(200, 120 + (40*i), 20, 20)
+					rtx.fillStyle = "#d0f0c0";
+					rtx.fillRect(240, 120 + (40*i), 20, 20)
+					rtx.fillStyle = "black";
+					rtx.fillRect(202, 130 + (40*i), 16, 1);
+					rtx.fillRect(242, 130 + (40*i), 16, 1);
+					rtx.fillRect(250, 123 + (40*i), 1, 14);
+				}
+				rtx.fillText("Costs", 50, 400);
+				rtx.fillText("Sailors: " + (10 + curShip[0] + curShip[1] + curShip[2]*2), 40, 425);
+				rtx.fillText("Wood: " + Math.floor(10*(curShip[0]*2 + curShip[4] + curShip[1]))/10, 40, 445);
+				rtx.fillText("Gold: " + Math.floor(10*(curShip[2] + curShip[3]*3 + curShip[4]))/10, 40, 465);
+				if(event.type == "mousedown" && event.which == 1 && y > 120 && y < 350){
+					if(x > 200 && x < 260){
+						if(x < 235){
+							if(curShip[Math.floor((y - 120)/40)] > 0){
+								curShip[Math.floor((y - 120)/40)]--;
+								pts++;
+								delta = true;
+							}
+						}
+						else{
+							if(pts > 0){
+								curShip[Math.floor((y - 120)/40)]++;
+								pts--;
+								delta = true;
+							}
+						}
+					}
+				}
+			}	
+		}
+		else if(tab == "recruiting"){
+			rtx.fillText("Infantry", 15, 80);
+			rtx.fillText("Archers", 15, 280);
+			rtx.fillText("Cavalry", 15, 480);
+			for(i = 0; i < 3; i++){
+				for(j = 0; j < 2; j++){
+					if(i == 2 && cen() > 150){
+						rtx.fillText("Requires <70 Centralization", 15, 500);
+					}
+					else{
+						rtx.strokeRect(20, 100+(200*i)+(40*j), 200, 40);
+						rtx.fillText(genericUnits[i][j][0], 25, 130 + (200*i)+(40*j));
+					}
+				}
+			}
+			//Cavalry
+			
+		}
+		else if(tab == "mercyard"){
+			
+		}
+		else if(tab == "academy"){
+			
+		}
+	}
+	function save(){
+		var str = "";
+		for(i = 0; i < map.length; i++){ for(j = 0; j < map[i].length; j++){ if(map[i][j].water > 0){ str += "0"} else if(map[i][j].grass == 1){ str += "1" } else if(map[i][j].hill == 1){ str += "2"} else if(map[i][j].mountain == 1){ str+= "3" } else if(map[i][j].forest == 1) { str += "4" } else if(map[i][j].desert == 1) { str += "5" } else{ str += "6"} }}
+		console.log(str);
+	}
+	function drawLeftBar(event){
+		var rect = l.getBoundingClientRect();
+		if(event != 0 && event.type == "mousedown" && event.which == 1){
+			var x = (event.clientX - rect.left);
+			var y = (event.clientY - rect.top);	
+		}
+		ltx.clearRect(0, 300, l.width, l.height - 300);
+		ltx.font = '20px Courier';
+		ltx.fillStyle = "black";
+		//wood, stone, gold, ore, manpower, sailors, population
+		ltx.fillText("Gold: " + Math.floor(player.resources[2]), 10, 320);
+		ltx.fillText("Wood: " + Math.floor(player.resources[0]), 10, 340);
+		ltx.fillText("Stone: " + Math.floor(player.resources[1]),10 , 360);
+		ltx.fillText("Ore: " + Math.floor(player.resources[3]),10 , 380);
+		
+		ltx.fillText("Unrest: " + Math.floor(player.wellBeing[3]),10 , 400);
+		ltx.fillText("Popularity:" + Math.floor(player.wellBeing[0]),10 , 420);
+		
+		ltx.fillText("Sailors: " + Math.floor(player.resources[5]), 10, 500);
+		ltx.fillText("Manpower: " + Math.floor(player.resources[4]), 10, 520);
+		ltx.fillText("Population: " + Math.floor(player.resources[6]), 10, 540);
+		ltx.fillText("Max Pop: " + Math.floor(player.maxPopulation()), 10, 560);
+		ltx.fillText("Supply Limit: " + Math.floor(player.supplyLimit()), 10, 580);
+		ltx.fillText(player.size + "/" + Math.floor(player.sizeLimit()), 10, 600);
+		//Gov Type
+		if(event.type != 0){
+			if(event.type == "mousedown" && event.which == 1 && y > 600 && y <= 630 && x > 150 && x < 300){
+				if(tempType == "small"){
+					tempType = "medium";
+				}
+				else if(tempType == "medium"){
+					tempType = "large";
+				}
+				else if(tempType == "large"){
+					tempType = "nomad";
+				}
+				else{
+					tempType = "small";
+				}
+				delta = true;
+			}
+			if(event.type == "mousedown" && event.which == 1 && y < 665 && y > 640 && x > 90 && x < 160){
+				player.wellBeing[0] -= 10;
+				player.wellBeing[3] += 5;
+				player.governmentType = tempType;
+				socket.emit('govChange', {
+					turn: turn,
+					govType: player.governmentType
+				});
+				player.baseSize = 0;
+				if(player.governmentType == "nomad"){
+					player.baseSize = 20;
+					player.wellBeing[3] = 8;
+				}
+				wellChange();
+				delta = true;
+			}
+			if(player.governmentType != tempType && player.wellBeing[0] > 9){
+				ltx.strokeRect(90, 640, 70, 30);
+				ltx.fillText("Save", 100, 660);
+			}
+		}
+		ltx.fillText("Government Type: " + tempType, 5 , 630);
+	}
+	function shadeColor(color, percent) { 
+		var num = parseInt(color.slice(1),16), amt = Math.round(2.55 * percent), R = (num >> 16) + amt, G = (num >> 8 & 0x00FF) + amt, B = (num & 0x0000FF) + amt;
+		return "#" + (0x1000000 + (R<255?R<1?0:R:255)*0x10000 + (G<255?G<1?0:G:255)*0x100 + (B<255?B<1?0:B:255)).toString(16).slice(1);
+	}
+	var zoom = 8;
+	
+	function draw(){
+		ctx.clearRect(0, 0, c.width, c.height);
+		for(i = 0 ; i < 700/(20-zoom); i++){
+			for(j = 0; j < 840/(20-zoom); j++){
+				yView = safeY(yView);
+				xView = safeX(xView);
+				var xLook = safeX(j + xView);
+				var yLook = safeY(i + yView);
+				if(map[yLook][xLook].water >= .75){
+					ctx.fillStyle = "blue";
+				}
+				 if(map[yLook][xLook].grass == 1){
+					ctx.fillStyle = "green";
+				}
+				 if(map[yLook][xLook].hill == 1){
+					ctx.fillStyle = "gray";
+				}
+				if(map[yLook][xLook].mountain == 1){
+					ctx.fillStyle = "black";
+				}
+				if(map[yLook][xLook].forest == 1){
+					ctx.fillStyle = "darkgreen";
+				}
+				if(map[yLook][xLook].farm == 1){
+					ctx.fillStyle = "olive";
+					//.
+				}				
+				if(map[yLook][xLook].desert == 1){
+					ctx.fillStyle = "tan";
+				}
+				if(map[yLook][xLook].snow == 1){
+					ctx.fillStyle = "#F8F8FF";
+				}
+				if(map[yLook][xLook].wall != 0){
+					ctx.fillStyle = "silver";
+				}
+				ctx.fillRect(Math.floor(j * (20-zoom)), Math.floor(i * (20-zoom)), (20-zoom), (20-zoom));
+				if(map[yLook][xLook].owner > -1){
+					if(map[yLook][xLook].owner == turn){
+						ctx.fillStyle = player.color;
+					}
+					else{ ctx.fillStyle = enColors[map[yLook][xLook].owner]; }
+					if(map[safeY(yLook + 1)][xLook].owner != map[yLook][xLook].owner){
+						ctx.fillRect((j) * (20 - zoom), (i+(5/6)) * (20 - zoom), (20 - zoom), (20 - zoom)/6);
+					}
+					if(map[safeY(yLook - 1)][xLook].owner != map[yLook][xLook].owner){
+						ctx.fillRect(j * (20 - zoom), i * (20 - zoom), (20 - zoom), (20 - zoom)/6);
+					}
+					if(map[yLook][safeX(xLook + 1)].owner != map[yLook][xLook].owner){
+						ctx.fillRect((j+(5/6)) * (20 - zoom), (i) * (20 - zoom), (20 - zoom)/6, (20 - zoom));
+					}
+					if(map[yLook][safeX(xLook - 1)].owner != map[yLook][xLook].owner){
+						ctx.fillRect(Math.floor(j * (20 - zoom)), Math.floor(i * (20 - zoom)), (20 - zoom)/6, (20 - zoom));
+					}
+				}
+				if(map[yLook][xLook].province != -1 && map[yLook][xLook].owner > -1){
+					if(map[yLook][xLook].owner == turn){
+						ctx.fillStyle = shadeColor(player.color, 40/player.provinces.length * (1 + parseInt(map[yLook][xLook].province.slice(1))));
+					}
+					else{
+						ctx.fillStyle = shadeColor(enColors[map[yLook][xLook].province.slice(0,1)], 8 * (1 + parseInt(map[yLook][xLook].province.slice(1))));
+					}
+					if(map[safeY(yLook + 1)][xLook].province != map[yLook][xLook].province){
+						ctx.fillRect((j) * (20 - zoom), (i+(5/6)) * (20 - zoom), (20 - zoom), (20 - zoom)/6);
+					}
+					if(map[safeY(yLook - 1)][xLook].province != map[yLook][xLook].province){
+						ctx.fillRect(j * (20 - zoom), i * (20 - zoom), (20 - zoom), (20 - zoom)/6);
+					}
+					if(map[yLook][safeX(xLook + 1)].province != map[yLook][xLook].province){
+						ctx.fillRect((j+(5/6)) * (20 - zoom), (i) * (20 - zoom), (20 - zoom)/6, (20 - zoom));
+					}
+					if(map[yLook][safeX(xLook - 1)].province != map[yLook][xLook].province){
+						ctx.fillRect(Math.floor(j * (20 - zoom)), Math.floor(i * (20 - zoom)), (20 - zoom)/6, (20 - zoom));
+					}
+				}
+				if(overlay[yLook][xLook] != -1){
+					if(overlay[yLook][xLook] == 0){
+						ctx.fillStyle = "#F2F4F4"
+						ctx.fillRect(Math.floor(j * (20-zoom)), Math.floor(i * (20-zoom)), (20-zoom), (20-zoom));
+					}
+					else if(overlay[yLook][xLook] == 1){
+						ctx.fillStyle = "black";
+						ctx.strokeRect(j * (20 - zoom), i * (20 - zoom), (20-zoom), (20-zoom));
+					}
+					else if(overlay[yLook][xLook] == 2 && tSelected != -1){
+						ctx.fillStyle = "black";
+						if(overlay[safeY(yLook + 1)][xLook] != 2){
+							ctx.fillRect((j) * (20 - zoom), (i+(5/6)) * (20 - zoom), (20 - zoom), (20 - zoom)/6);
+						}
+						if(overlay[safeY(yLook - 1)][xLook] != 2){
+							ctx.fillRect(j * (20 - zoom), i * (20 - zoom), (20 - zoom), (20 - zoom)/6);
+						}
+						if(overlay[yLook][safeX(xLook + 1)] != 2){
+							ctx.fillRect((j+(5/6)) * (20 - zoom), (i) * (20 - zoom), (20 - zoom)/6, (20 - zoom));
+						}
+						if(overlay[yLook][safeX(xLook - 1)] != 2){
+							ctx.fillRect(Math.floor(j * (20 - zoom)), Math.floor(i * (20 - zoom)), (20 - zoom)/6, (20 - zoom));
+						}
+					}
+				}
+				if(map[yLook][xLook].city != 0){
+					ctx.beginPath();
+					ctx.arc(j * (20 - zoom) + (20-zoom)/2, i * (20 - zoom) + (20-zoom)/2, (20 - zoom)/2, 0, 2 * Math.PI, false);
+					ctx.lineWidth = 1;
+					ctx.fillStyle = "black";
+					ctx.stroke();
+				}
+				if(map[yLook][xLook].occupied != -1){
+					rtx.strokeStyle = enColors[map[yLook][xLook].occupied];
+					if(map[yLook][xLook].annexed > 0){
+						ctx.beginPath();
+						ctx.moveTo(j * (20 - zoom), i * (20 - zoom));
+						ctx.lineTo((j + 1) * (20 - zoom), (i+1) * (20 - zoom));
+						ctx.stroke();
+					}
+					if(map[yLook][xLook].annexed > 1/3){
+						ctx.beginPath();
+						ctx.moveTo(j * (20 - zoom), (i+1) * (20 - zoom));
+						ctx.lineTo((j + 1) * (20 - zoom), (i) * (20 - zoom));
+						ctx.stroke();
+					}
+					rtx.strokeStyle = "black";
+				}
+				if(map[yLook][xLook].selected){
+					ctx.fillStyle = "black";
+					ctx.strokeRect(j * (20 - zoom), i * (20 - zoom), (20-zoom) - 1/zoom, (20-zoom) - 1/zoom);
+				}
+				if(map[yLook][xLook].armies.length > 0){
+					for(t = 0; Math.min(4, t < map[yLook][xLook].armies.length); t++){
+						if(map[yLook][xLook].armies[t][7] == 0){
+							ctx.fillStyle = "#8C7853";
+						}
+						else if(map[yLook][xLook].armies[t][7] == 1){
+							ctx.fillStyle = "#E6E8FA";
+						}
+						else if(map[yLook][xLook].armies[t][7] == 2){
+							ctx.fillStyle = "#CFB53B";
+						}
+						ctx.fillRect( j*(20-zoom)+ (t%2)*(20-zoom)/2,i*(20-zoom)+ Math.floor(t/2)*(20-zoom)/2, (20-zoom)/2, (20-zoom)/2);
+					}
+				}
+			}
+		}
+		var rect = l.getBoundingClientRect();
+				ltx.clearRect(0, 0, 300, 300);
+				for(i = 0 ; i < 149; i++){
+					for(j = 0; j < 149; j++){
+						ltx.fillStyle = "black";
+						var xLook = safeX(j + xView - 30);
+						var yLook = safeY(i + yView - 30);
+						if(map[yLook][xLook].water >= .75){
+							ltx.fillStyle = "blue";
+						}
+						if(map[yLook][xLook].grass == 1){
+							ltx.fillStyle = "green";
+						}
+						 if(map[yLook][xLook].hill == 1){
+							ltx.fillStyle = "gray";
+						}
+						if(map[yLook][xLook].mountain == 1){
+							ltx.fillStyle = "black";
+						}
+						if(map[yLook][xLook].forest == 1){
+							ltx.fillStyle = "darkgreen";
+						}
+						if(map[yLook][xLook].farm == 1){
+							ltx.fillStyle = "olive";
+						}
+						if(map[yLook][xLook].desert == 1){
+							ltx.fillStyle = "tan";
+						}
+						if(map[yLook][xLook].snow == 1){
+							ltx.fillStyle = "#F8F8FF";
+						}
+						if(map[yLook][xLook].owner > -1){
+							if(map[yLook][xLook].owner == turn){
+								ltx.fillStyle = player.color;
+							}
+							else{
+								ltx.fillStyle = enColors[map[yLook][xLook].owner];
+							}
+						}
+						ltx.fillRect(j * (2), i * (2), 1 * (2), 1 * (2));
+						
+					}
+				}
+				
+			
+	}
+	
+	var drawingProvince = true;
+	var delta = true;
+	var tempType = "small";
+	function claim(event){
+		if(event.shiftKey){
+			document.addEventListener('mousemove', claim);
+		}
+		else{ document.removeEventListener('mousemove', claim); }
+		drawDelta = true;
+		var rect = c.getBoundingClientRect();
+		var x =(xView + Math.floor((event.clientX - rect.left)/(20-zoom)));
+		var y = (yView + Math.floor((event.clientY - rect.top)/(20-zoom)));
+		if(x >= xView && y >= yView && x < xView + 840/(20-zoom) && y < yView + (700)/(20-zoom)){
+				x = safeX(xView + Math.floor((event.clientX - rect.left)/(20-zoom)));
+				y = safeY(yView + Math.floor((event.clientY - rect.top)/(20-zoom)));
+				if((event.shiftKey && event.buttons == 1) || (event.type == "mousedown" && event.which == 1 && !event.ctrlKey)){
+					if(player.tileSelected != 0){
+						player.tileSelected.selected = false;
+					}
+					player.tileSelected = map[y][x];
+					player.tileSelected.selected = true;
+					selected = player.tileSelected.owner;
+					if(map[y][x].owner == turn && player.tileSelected.province != -1 && map[y][x].province.slice(1) != player.provinceSelected){
+						player.provinceSelected = map[y][x].province.slice(1);
+						delta = true;
+					}
+					else{
+						player.provinceSelected = -1;
+						delta = true;
+					}
+					if(player.action == "provinces" && drawingProvince){
+						if(map[y][x].owner == turn && map[y][x].province == -1 && player.size - 1 > player.provSize && map[y][x].city == 0){
+							map[y][x].province = "" + map[y][x].owner + (player.provinces.length - 1) + "";
+							player.provSize++;
+							player.provinces[player.provinces.length - 1].development += map[y][x].development;
+							player.development -= map[y][x].development;
+							devChange();
+							player.provinces[player.provinces.length - 1].id = map[y][x].province;
+							player.provinces[player.provinces.length - 1].territory.push(map[y][x]);
+							delta = true;
+							//
+						}
+					}
+				if(player.action == "claiming"){
+					if(player.capital != 0){
+						var capDistanceX = Math.abs(x - player.capital.x);
+						var capDistanceY = Math.abs(y - player.capital.y);
+						if(capDistanceX > 200){
+							capDistanceX = 600 - capDistanceX;
+						}
+						if(capDistanceY > 200){
+							capDistanceY = 400 - capDistanceY;
+						}
+					}
+					else{
+						var capDistanceX = 0;
+						var capDistanceY = 0;
+					}
+					if(Math.sqrt((capDistanceX * capDistanceX) + (capDistanceY * capDistanceY)) < player.supplyLimit()){
+						if(map[y][x].armies.length == 0){
+							if(map[y][x].water < .2){
+								if((map[y][x].owner == -1 && player.size == 0) || map[safeY(y - 1)][x].owner == turn || map[safeY(y + 1)][x].owner == turn || map[y][safeX(x + 1)].owner == turn || map[y][safeX(x- 1)].owner == turn ||  map[safeY(y - 1)][safeX(x- 1)].owner == turn ||  map[safeY(y + 1)][safeX(x + 1)].owner == turn ||  map[safeY(y - 1)][safeX(x + 1)].owner == turn ||  map[safeY(y + 1)][safeX(x- 1)].owner == turn ||  map[safeY(y - 1)][x].occupied == turn || map[safeY(y + 1)][x].occupied == turn || map[y][safeX(x + 1)].occupied == turn || map[y][safeX(x- 1)].occupied == turn ||  map[safeY(y - 1)][safeX(x- 1)].occupied == turn ||  map[safeY(y + 1)][safeX(x + 1)].occupied == turn ||  map[safeY(y - 1)][safeX(x + 1)].occupied == turn ||  map[safeY(y + 1)][safeX(x- 1)].occupied == turn){
+									if(map[y][x].owner == -1){
+										if(player.size < player.sizeLimit() && player.resources[4] > Math.floor(map[y][x].mountain * 5 + map[y][x].hill * 3 + map[y][x].farm + map[y][x].grass + map[y][x].forest * 2)){
+											if(map[y][x].manufactory != 0){
+												if(player.hasManufactory){
+													player.resources[0] += 50;
+													map[y][x].manufactory = 0;
+												}
+												else{ player.hasManufactory = true; }
+											}
+												player.size++;
+												if(map[y][x].province != -1){
+													player.provSize++;
+												}//
+												player.development += map[y][x].development;
+												player.resources[6]+=.5;
+												player.wellBeing[0] += .08;
+												player.resources[4] -= Math.floor(map[y][x].mountain * 5 + map[y][x].hill * 3 + map[y][x].farm + map[y][x].grass + map[y][x].forest * 2);
+												if(player.size == 1){
+													cit = new City();
+													cit.capital = true;
+													cit.claim = turn;
+													player.numCities++;
+													cit.mayor = 0;
+													cit.y = y;
+													cit.x = x;
+													map[y][x].city = cit;
+													for(i = -1; i < 2; i++){
+														for(j = -1; j < 2; j++){
+															if(map[safeY(y+i)][safeX(x+j)].forest == 1){
+																cit.resources[0] += 12;
+															}
+															else if(map[safeY(y+i)][safeX(x+j)].hill == 1){
+																cit.resources[1] += 7;
+															}
+															else if(map[safeY(y+i)][safeX(x+j)].mountain == 1){
+																cit.resources[2] += .1;
+																cit.resources[3] += 3;
+															}
+															else if(map[safeY(y+i)][safeX(x+j)].grass == 1){
+																cit.resources[4] += 20;
+															}
+															if(map[safeY(y+i)][safeX(x+j)].water == 1){
+																cit.resources[5] += 10;
+																cit.resources[2] += .1;
+															}
+														}
+													}
+													player.capital = map[y][x];
+													player.cities.push(map[y][x].city);
+												}											
+												tileChange(y, x, turn, map[y][x].development);
+												map[y][x].owner = turn;
+												if(map[y][x].province == -1){
+													player.territory.push(map[y][x])
+												}
+											}
+											delta = true;
+											resChange();
+										}
+										else if(map[y][x].occupied != -1 && map[y][x].occupied != turn){
+											if((map[y][x].city == 0 && player.resources[4] > 2 * map[y][x].annexed * (Math.floor(map[y][x].mountain * 5 + map[y][x].hill * 3 + map[y][x].farm + map[y][x].grass + map[y][x].forest * 2))) || (map[y][x].city != 0 && player.resources[4] >  map[y][x].annexed *map[y][x].city.defense*map[y][x].city.loyalty/100)){
+												console.log("province reclaimed");
+												if(map[y][x].province != -1){
+													map[y][x].province = -1;
+												}
+												if(map[y][x].city != 0){
+													player.resources[4] -= map[y][x].annexed * map[y][x].city.defense * map[y][x].city.loyalty/100;
+													console.log("city claimed");
+												}
+												else{
+													player.resources[4] -= 2 * map[y][x].annexed * Math.floor(map[y][x].mountain * 5 + map[y][x].hill * 3 + map[y][x].grass + map[y][x].forest * 2 + map[y][x].wall * 20);
+												}
+												tileChange(y, x, turn, map[y][x].development);
+												map[y][x].annexed = 1;
+												map[y][x].occupied = -1;
+											}
+											delta = true;
+										}
+									}
+								}
+								else if(map[y][x].water == 1){
+									var chk = 0;
+									for(i=-1; i <= 1; i++){
+										for(j = -1; j <= 1; j++){
+											if(map[safeY(y + i)][safeX(x + j)].owner == turn){
+												if(map[safeY(y + i)][safeX(x + j)].water == 1 || (map[safeY(y + i)][safeX(x + j)].city != 0 && map[safeY(y + i)][safeX(x + j)].city.buildings[4][1] != 0)){
+													chk++;
+													i = 2;
+													j = 2;
+												}
+											}
+										}
+									}
+									if(chk > 0){
+										if(map[y][x].owner == -1){
+											if(player.resources[5] >= 1){
+												player.resources[5] -= 1;
+												tileChange(y, x, turn, map[y][x].development * .25);
+												map[y][x].owner = turn;
+												player.territory.push(map[y][x]);
+												player.baseSupplyLimit++;
+												player.development += map[y][x].development * .25;
+												player.wellBeing[0] += .08;
+												wellChange();
+												supChange();
+											}
+										}
+										else if(map[y][x].owner !== turn){
+											if(player.resources[5] >= 3){
+												player.resources[5] -= 3;
+												player.baseSupplyLimit++;
+												tileChange(y, x, turn, map[y][x].development * .25);
+												map[y][x].owner = turn;
+												player.territory.push(map[y][x]);
+												player.development += .25;
+												player.wellBeing[0] += .08;
+												wellChange();
+												supChange();
+												
+											}
+										}
+									}
+								}
+							}
+						drawDelta = true;
+					}
+				}
+				else if(player.action == "godmode"){
+					for(i = 0 - brushSize; i < brushSize + 1; i++){
+						for(j = 0 - brushSize; j < brushSize + 1; j++){
+							if(j % 2 == 0 && i % 2 != 0 && pattern == "checkerboard" || (pattern == "straight")){
+								map[safeY(y + i)][safeX(x + j)].grass = 0; 
+								map[safeY(y + i)][safeX(x + j)].water = 0;
+								map[safeY(y + i)][safeX(x + j)].hill = 0;
+								map[safeY(y + i)][safeX(x + j)].mountain = 0;
+								map[safeY(y + i)][safeX(x + j)].forest = 0;
+								map[safeY(y + i)][safeX(x + j)].desert = 0;
+								map[safeY(y + i)][safeX(x + j)].snow = 0;
+								if(brushType == "grass"){
+									map[safeY(y + i)][safeX(x + j)].grass = 1;
+								}
+								else if(brushType == "forest"){
+									map[safeY(y + i)][safeX(x + j)].forest = 1;
+								}
+								else if(brushType == "hill"){
+									map[safeY(y + i)][safeX(x + j)].hill = 1;
+								}
+								else if(brushType == "mountain"){
+									map[safeY(y + i)][safeX(x + j)].mountain = 1;
+								}
+								else if(brushType == "water"){
+									map[safeY(y + i)][safeX(x + j)].water = 1;
+								}
+								else if(brushType == "desert"){
+									map[safeY(y + i)][safeX(x + j)].desert = 1;
+								}
+								else if(brushType == "snow"){
+									map[safeY(y + i)][safeX(x + j)].snow = 1;
+								}
+								tileChange(safeY(y + i), safeX(x + j), -1, 0);
+							}
+						}
+					}
+				}
+				
+			
+			else if(player.action == "clearing"){
+			if(player.resources[4] < 4){
+					player.action = "claiming";
+				}
+				else if(player.tileSelected != 0 && player.tileSelected.owner == turn && player.tileSelected.forest == 1 && player.resources[4] >= 4){
+					player.resources[0]++; 
+					map[y][x].forest = 0;
+					map[y][x].grass = 1;
+					player.resources[4] -= 4;
+					resChange();
+					tileChange(y, x, turn, 0);
+				}
+			}
+			else if(player.action == "farming"){
+				if(player.resources[0] < 2){
+					player.action = "claiming";
+				}
+				else if(map[y][x].owner == turn && map[y][x].farm == 0 && map[y][x].grass == 1){
+					player.development++;
+					map[y][x].grass = 0;
+					player.resources[0] -= 2;
+					map[y][x].farm = 1; 
+					player.resources[5]++;
+					map[y][x].development += 1;
+					if(player.wellBeing[3] > 0){
+						if(player.wellBeing[3] >= 1){
+							player.wellBeing[3]--;
+						}
+					}
+					player.wellBeing[0]++;
+					resChange();
+					wellChange();
+					tileChange(y, x, turn, 1);
+				}
+			}
+			}
+			else if(event.ctrlKey && event.type == "mousedown" && event.which == 1 && map[y][x].city == 0){
+				if(map[y][x].water == 0){
+					if(map[y][x].owner == turn && player.size > 1){
+						player.size--;	
+						player.development -= map[y][x].development;
+						if(map[y][x].manufactory > 0){
+							player.hasManufactory = false;
+						}
+						for(i = 0; i < player.territory.length; i++){
+							if(player.territory[i].y == y && player.territory[i].x == x){
+								player.territory.splice(i, 1);
+								i = player.territory.length;
+							}
+						}
+						if(map[y][x].province != -1){
+							player.provSize--;
+							if(map[y][x].province.slice(0,1) == turn){
+								for(i = 0; i < player.provinces[map[y][x].province.slice(1)].territory.length; i++){
+									if(player.provinces[map[y][x].province.slice(1)].territory[i].y == y && player.provinces[map[y][x].province.slice(1)].territory.x == x){
+										player.provinces[map[y][x].province.slice(1)].territory.splice(i, 1);
+										i = player.territory.length;
+									}
+								}
+							}
+							map[y][x].province = -1;
+						}
+						tileChange(y, x, -1, map[y][x].development);
+						map[y][x].owner = -1;
+					}
+					drawDelta = true;
+					delta = true;
+				}
+				else{
+					if(map[y][x].owner == turn && player.size > 1){
+						player.development -= .25;
+						if(map[y][x].manufactory > 0){
+							player.hasManufactory = false;
+						}
+						for(i = 0; i < player.territory.length; i++){
+							if(player.territory[i].y == y && player.territory[i].x == x){
+								player.territory.splice(i, 1);
+								i = player.territory.length;
+							}
+						}
+						tileChange(y, x, -1, .25);
+						map[y][x].owner = -1;
+					}
+					drawDelta = true;
+					delta = true;
+				}
+			}
+			else if(event.which == 3){
+				for(i = 0; i < sels.length; i++){
+					var y1 = player.army[sels[i]][8][player.army[sels[i]][8].length-1][0];
+					var x1 = player.army[sels[i]][8][player.army[sels[i]][8].length-1][1];
+					if(Math.sqrt(Math.pow(y - y1, 2) + Math.pow(x - x1, 2)) < 2 && map[y][x].grass == 1 && map[y][x].city == 0 && map[y][x].wall == 0){
+						if(player.army[sels[i]][8][player.army[sels[i]][8].length-1][0] != y || player.army[sels[i]][8][player.army[sels[i]][8].length-1][1] != x){
+							player.army[sels[i]][8].push([y,x]);
+							map[y][x].selected = true;
+							armyChange(sels[i]);
+						}
+					}
+				}
+			}
+		}
+	}
+	socket.on('unitChange', function(data){
+		if(data.unit == 0){
+			player.army.splice(data.index, 1);
+			aSel = -1;
+			gSel = -1;
+			sels = [];
+		}
+		else{
+			player.army[data.index] = data.unit;
+			delta = true;
+			drawDelta = true;
+		}
+	});
+	socket.on('expand', function(data){
+		if(data.tile.owner == turn){
+			player.size++;
+			player.provSize++;
+			player.provinces[data.prov].territory.push(data.tile);
+		}
+		drawDelta = true;	
+		map[data.tile.y][data.tile.x] = data.tile;
+	});
+	socket.on('armyClaim', function(data){
+		player.territory.push(data.tile);
+		player.size++;
+		map[data.tile.y][data.tile.x].owner = turn;
+		player.development += data.tile.development;
+	});
+	socket.on('tileChange', function(data){
+		for(i = 0; i < data.tiles.length; i++){
+			if(map[data.tiles[i].y][data.tiles[i].x].owner == turn){
+				if(data.tiles[i].owner != turn){
+					if(map[data.tiles[i].y][data.tiles[i].x].province != -1){
+						player.provSize--;
+						if(map[data.tiles[i].y][data.tiles[i].x].province.slice(0,1) == turn){
+							for(j = 0; j < player.provinces[map[data.tiles[i].y][data.tiles[i].x].province.slice(1)].territory.length; j++){
+								if(player.provinces[map[data.tiles[i].y][data.tiles[i].x].province.slice(1)].territory[j].y == data.tiles[i].y && player.provinces[map[data.tiles[i].y][data.tiles[i].x].province.slice(1)].territory[j].x == data.tiles[i].x){
+									player.provinces[map[data.tiles[i].y][data.tiles[i].x].province.slice(1)].territory.splice(j, 1);
+									j = player.territory.length;
+								}
+							}
+						}
+						map[data.tiles[i].y][data.tiles[i].x].province = -1;
+					}
+					player.size--;
+					for(k = 0; k < player.territory.length; k++){
+						if(player.territory[k].y == data.tiles[i].y && player.territory[k].x == data.tiles[i].x){
+							player.territory.splice(k, 1);
+							k = player.territory.length;
+						}
+					}
+				}
+			}
+			else if(map[data.tiles[i].y][data.tiles[i].x].occupied == turn && data.tiles[i].owner == turn){
+				player.territory.push(data.tiles[i]);
+			}
+			map[data.tiles[i].y][data.tiles[i].x] = data.tiles[i];
+			drawDelta = true;
+		}
+	});
+	var drawDelta = true;
+	function mapV(event){
+		if(event.keyCode == 37){
+			xView--;
+			drawDelta = true;	
+		}
+		if(event.keyCode == 38){
+			yView--;
+			drawDelta = true;
+		}
+		if(event.keyCode == 39){
+			xView++;
+			drawDelta = true;
+		}
+		if(event.keyCode == 40){
+			yView++;
+			drawDelta = true;
+		}
+	}
+	//Decisions:
+	var decisions = [];
+		//name, description
+		//this.name = name;
+		//this.condition;
+		//this.description = description;
+		//this.effect;
+		d1 = new Decision("Levy manpower", "Levy 50 Additional manpower. The people won't like this.");
+		d1.condition = function(){ return player.resources[6] > 50 && ((player.governmentType == "medium" && player.wellBeing[0] >= 10) || (player.governmentType == "large" && player.wellBeing[0] >= 5) || player.governmentType == "nomad"); };
+		d1.effect = function(){
+			player.resources[6] -= 50;
+			player.resources[4] += 50;
+			if(player.governmentType == "medium" || player.governmentType == "nomad"){
+				player.wellBeing[3] += 4;
+				player.wellBeing[0] -= 10;
+			}
+			resChange();
+			wellChange();
+		};
+		decisions[decisions.length] = d1;
+		d1.type = "game";
+		
+		d2 = new Decision("Sell Mercenaries", "There are plenty of Warlords seeking men for their warbands.");
+		d2.condition = function(){ return player.resources[4] >= 30; };
+		d2.effect = function(){ player.resources[4] -= 30; player.resources[2] += 50; player.wellBeing[0] -= 5; resChange(); wellChange();};
+		decisions[decisions.length] = d2;
+		d2.type = "game";		
+		
+		d3 = new Decision("Clear Forests", "Send some men to quickly clear a forest.");
+		d3.condition = function(){ return !(player.action == "clearing"); };
+		d3.effect = function(){player.action = "clearing";} 
+		d3.type = "province";
+		decisions[decisions.length] = d3;
+		
+		d33 = new Decision("Stop Clearing forests", "End Forest Clearing");
+		d33.condition = function(){ return player.action == "clearing"; };
+		d33.effect = function(){player.action = "claiming";}
+
+		decisions[decisions.length] = d33;
+		
+		d4 = new Decision("Plant Forest", "Transplant saplings and small trees to this tile.");
+		d4.condition = function(){ return player.tileSelected != 0 && player.resources[0] >= 3 && player.tileSelected.owner == turn && player.tileSelected.grass == 1 && player.resources[4] >= 4};
+		d4.effect = function(){
+			player.resources[0] -= 3;
+			player.tileSelected.forest = 1;
+			player.tileSelected.grass = 0;
+			player.resources[4] -= 4;
+			tileChange(player.tileSelected.y, player.tileSelected.x, turn, 0);
+			resChange();
+		}
+		decisions[decisions.length] = d4;
+		d4.type = "province";
+		
+		d5 = new Decision("Expel Dissidents", "Banish unloyal peasantry.");
+		d5.condition = function(){return player.resources[6] > 1}
+		d5.effect = function(){
+			player.resources[6] *= .94;
+			resChange();
+			wellChange();
+		}
+		d5.type = "country";
+		//decisions[decisions.length] = d5;
+
+		d11 = new Decision("Build City", "40w 20s");
+		d11.condition = function(){	return player.tileSelected.owner == turn && player.tileSelected.city == 0 && player.resources[1] > 20 && player.resources[0] >= 50 && player.tileSelected.water == 0 }
+		d11.effect = function(){
+			player.resources[0] -= 50;
+			player.resources[1] -= 20;
+			var c = new City();
+			cit.claim = turn;
+			c.mayor = player.court.length;
+			player.court.push(genNoble(2));
+			c.y = player.tileSelected.y;
+			c.x = player.tileSelected.x;
+			player.tileSelected.city = c;
+			player.numCities++;
+			player.cities.push(c);
+			resChange()
+			player.development += 3;
+			map[player.tileSelected.y][player.tileSelected.x].development += 3;
+			tileChange(player.tileSelected.y, player.tileSelected.x, turn, 3);
+			courtChange();
+		};
+		//decisions[decisions.length] = d11;
+		d11.type = "province";
+		
+		d12 = new Decision("Develop province", "Develop the selected province");
+		d12.condition = function(){	return player.tileSelected.owner == turn && player.tileSelected.water != 1 && player.resources[2] >= 100}
+		d12.effect = function(){
+			player.resources[2]-=100;
+			player.development+=4;
+			player.tileSelected.development+= 4;
+			resChange()
+		}
+		decisions[decisions.length] = d12;
+		d11.type = "province";
+		
+		
+		d13 = new Decision("Purify Ore", "Purify Ore");
+		d13.condition = function(){	return player.hasManufactory && player.resources[3] >= 2}
+		d13.effect = function(){
+			player.resources[1] += player.resources[3];
+			player.resources[2] += Math.random() * 40 * player.resources[3];
+			player.resources[3] = 0;
+			resChange();
+		}
+		decisions[decisions.length] = d13;
+		d13.type = "game";
+		
+		d14 = new Decision("Build Manufactory", "Build a center to purify ore");
+		d14.condition = function(){ return player.tileSelected.owner == turn && player.resources[0] >= 90 && player.tileSelected.water < .2 && player.hasManufactory == false};
+		d14.effect = function(){ player.hasManufactory = true; player.resources[0] -= 90; player.tileSelected.manufactory = 1; player.tileSelected.development += 4;resChange() }
+		decisions[decisions.length] = d14;
+		
+		d15 = new Decision("Hire Mercenaries", "Recruit 50 mercenaries");
+		d15.condition = function(){ return player.resources[2] >= 100};
+		d15.effect = function(){ player.resources[4] += 50; player.resources[2] -= 100; resChange() };
+		decisions[decisions.length] = d15;
+		d15.type = "game";
+		
+		d16 = new Decision("Build Mine", "Build a mine here.");
+		d16.condition = function(){ return player.tileSelected.owner == turn && player.resources[0] >= 75 && player.tileSelected.mine == false && player.tileSelected.water < .2 };
+		d16.effect = function(){  player.resources[0] -= 70; player.tileSelected.mine = 1; player.tileSelected.development += 4; resChange()}
+		decisions[decisions.length] = d16;
+		d16.type = "game";
+		
+		d17 = new Decision("Build Statue", "Build a Grand Statue");
+		d17.condition = function(){ return player.tileSelected.owner == turn && player.resources[1] >= 15 && player.tileSelected.city != 0 && player.tileSelected.city.statue == 0 };
+		d17.effect = function(){ player.resources[1] -= 15; player.tileSelected.city.statue = 1; resChange()};
+		//decisions[decisions.length] = d17;
+		
+		d19 = new Decision("Levy Sailors", "Levy 15 sailors");
+		d19.condition = function(){ return player.resources[6] > 15 && player.wellBeing[0] > 0; };
+		d19.effect = function(){
+			player.resources[5] += 15; 
+			if(player.governmentType !== "small"){
+				player.wellBeing[0] -= 1;
+				if(player.wellBeing[3] > 1){
+					player.wellBeing[3]--;
+				}
+			}
+			wellChange();
+			player.resources[6] -= 15; 
+			resChange()
+		};
+		decisions[decisions.length] = d19;
+		d19.type = "game";
+	
+		d21 = new Decision("Build port", "Build access to water 30w");
+		d21.condition = function(){ return player.tileSelected.owner == turn && player.resources[0] >= 30 && player.tileSelected.city != 0 && player.tileSelected.city.dock == 0 };
+		d21.effect = function(){ if(player.wellBeing[3] > 0){player.wellBeing[3] -= 5;} player.resources[0] -= 30; player.tileSelected.city.dock = 1; player.hasDock = true; resChange(); wellChange(); tileChange(player.tileSelected.y, player.tileSelected.x, turn, 0); };
+		//decisions[decisions.length] = d21;
+		d22 = new Decision("Construct Improvements", "Improve this Tile (Stone)");
+		d22.condition = function(){	return player.governmentType == "small" && player.tileSelected.owner == turn && player.tileSelected.water < .2 && player.resources[1] >= 2};
+		d22.effect = function(){
+			player.resources[1] -= 2;
+			if(player.wellBeing[3] > 0){
+				player.wellBeing[3] -= .5;
+			}	
+			player.development += 1;
+			if(player.wellBeing[0] < 100){
+				player.wellBeing[0] += .5;
+			}
+			player.tileSelected.development += 1;
+			if(player.tileSelected.city != 0){
+				player.tileSelected.city.wealth += .01;
+			}
+			resChange();
+			wellChange();
+			tileChange(player.tileSelected.y, player.tileSelected.x, turn, 1);
+		};
+		decisions[decisions.length] = d22;
+		d23 = new Decision("Improvement x5", "Improve this Tile (Stone)");
+		d23.condition = function(){	return player.governmentType == "small" && player.tileSelected.owner == turn && player.tileSelected.water < .2 && player.resources[1] >= 10};
+		d23.effect = function(){
+			player.resources[1] -= 10;
+			if(player.wellBeing[3] > 0){
+				player.wellBeing[3] -= 2.5;
+			}	
+			player.development += 1;
+			if(player.wellBeing[0] < 100){
+				player.wellBeing[0] += 2.5;
+			}
+			player.tileSelected.development += 5;
+			if(player.tileSelected.city != 0){
+				player.tileSelected.city.wealth += .01;
+			}
+			resChange();
+			wellChange();
+			tileChange(player.tileSelected.y, player.tileSelected.x, turn, 5);
+		};	
+		decisions[decisions.length] = d23;
+		d25 = new Decision("Buy Sailors", "Spend 1 gold for 30 sailors");
+		d25.condition = function(){ return player.resources[2] >= 100 };
+		d25.effect = function(){ player.resources[5] += 30; player.resources[2]-=100; resChange();};
+		decisions[decisions.length] = d25;
+		
+		var sellRates = ["0","0","0","0","0"];
+		var buyRates = ["0","0","0","0","0"];
+		d24 = new Decision("Trade", "Offer a Trade");
+		d24.condition = function(){ return selected != -1 && selected != turn};
+		d24.effect = function(){ trading = true; makingDecisions = false; buyRates = [0, 0, 0, 0, 0]; sellRates = [0, 0, 0, 0, 0];};
+		decisions[decisions.length] = d24;
+		
+		d26 = new Decision("Sway Peasants", "Unrest = 0, +10 popularity");
+		d26.condition = function(){ return player.wellBeing[0] < 85 && player.resources[2] >= 100 && player.governmentType != "nomad"	}
+		d26.effect = function(){ if(player.wellBeing[3] >= 4){ player.wellBeing[3] -= 4 }; player.resources[2]-=100; player.wellBeing[0] += 15; resChange(); wellChange();};
+		decisions[decisions.length] = d26;
+		
+		d27 = new Decision("Construct Canal", "Construct a Canal Here");
+		d27.condition = function(){ return (player.tileSelected.city * player.tileSelected.mine * player.tileSelected.manufactory == 0) && player.resources[4] > 20 && player.resources[1] >= 6 && player.resources[0] >= 3 && player.tileSelected.grass > .5 && player.tileSelected.owner == turn }
+		d27.effect = function(){ player.wellBeing[3]--; player.resources[0] -= 3; player.resources[1] -= 6; player.resources[4] -= 20; player.tileSelected.water = 1; player.tileSelected.grass = 0; player.size--; tileChange(player.tileSelected.y, player.tileSelected.x, -1, -1); sChange(); resChange()};
+		decisions[decisions.length] = d27;
+		
+		d28 = new Decision("Disband Manpower", "Return 3/4 of your manpower to your population");
+		d28.condition = function(){ return (player.resources[4] > 3) };
+		d28.effect = function(){ player.resources[6] += (player.resources[4] * .75); player.resources[4] *= .25; resChange()};
+		decisions[decisions.length] = d28;
+		
+		d29 = new Decision("Build Farms", "Start Building Farms");
+		d29.condition = function(){ return !(player.action == "farming") && player.size > 0 && player.resources[0] >= 2 };
+		d29.effect = function(){ player.action = "farming";}
+		decisions[decisions.length] = d29;
+		d29.type = "game";
+		
+		d35 = new Decision("Stop Farming", "Stop Building Farms");
+		d35.condition = function(){ return player.action == "farming" && player.size > 0};
+		d35.effect = function(){ player.action = "claiming"; }
+		decisions[decisions.length] = d35;
+		
+		d30 = new Decision("Clear farm", "Send some men to clear this farm.");
+		d30.condition = function(){ return player.tileSelected.farm != 0 && player.tileSelected.owner == turn && player.resources[4] >= 1 && player.wellBeing[0] > 0};
+		d30.effect = function(){ 
+			player.resources[0]++; 
+			player.tileSelected.farm = 0;
+			player.tileSelected.grass = 1;
+			player.resources[4] -= 1;
+			player.wellBeing[3]++;
+			player.tileSelected.development--;
+			resChange();
+			wellChange();
+		}
+		d30.type = "province";
+		decisions[decisions.length] = d30;
+		
+		d32 = new Decision("Build Wall", "-100% development; +40 cost to capture");
+		d32.condition = function(){ return (player.tileSelected.wall + player.tileSelected.city + player.tileSelected.mine + player.tileSelected.manufactory == 0) && player.resources[4] > 20 && player.resources[1] >= 10 && player.resources[0] >= 2 && player.tileSelected.water < .5 && player.tileSelected.owner == turn }
+		d32.effect = function(){ player.wellBeing[3]--; player.resources[0] -= 2; player.resources[1] -= 10; player.resources[4] -= 10; player.tileSelected.wall = 1; player.tileSelected.development = 0; resChange()};
+		decisions[decisions.length] = d32;
+		
+		d33 = new Decision("Build Infrastructure", "-3 pop, +1 development");
+		d33.condition = function(){ return player.governmentType == "medium" && player.size >= player.sizeLimit() * .5 && player.tileSelected.owner == turn && player.resources[4] > 3 }
+		d33.effect = function(){ if(player.wellBeing[3] > 0){player.wellBeing[3] -= .5;} player.resources[4] -= 3; player.development++; player.tileSelected.development++;  tileChange(player.tileSelected.y, player.tileSelected.x, turn, 1);resChange();}
+		decisions[decisions.length] = d33;
+		
+		
+		d34 = new Decision("Raise Size Limit", "Enact Expansionist Policies");
+		d34.condition = function(){ return (player.governmentType == "medium" && player.wellBeing[0] > 5) || (player.governmentType == "large" && player.wellBeing[0] > 5) };
+		d34.effect = function(){
+			if(player.governmentType == "medium"){
+				player.wellBeing[3] += 2;
+				player.wellBeing[0] -= 2;
+				player.baseSize += 15
+				player.resources[0] += 1;
+				player.resources[4] += 5;
+				player.resources[2] += 25;
+			}
+			else{
+				if(player.wellBeing[3] >= 1){ player.wellBeing[3]--;}
+				player.wellBeing[0] -= 5;
+				player.baseSize += 35;
+				player.resources[0]++;
+				player.resources[4] += 5;
+			}
+			bsChange();
+			resChange();
+			wellChange();
+		}
+		decisions[decisions.length] = d34;
+		d37 = new Decision("Pillage City", "Ransack this town");
+		d37.condition = function(){ return player.governmentType == "nomad" && player.tileSelected.owner == turn && player.tileSelected.city };
+		d37.effect = function(){ player.tileSelected.city = 0; player.numCities--; player.resources[2] += player.tileSelected.development; player.tileSelected.development = 1; player.resources[4] += 100; tileChange(player.tileSelected.y, player.tileSelected.x, turn, (1-player.tileSelected.development)); resChange(); }
+		decisions[decisions.length] = d37;
+	
+	//--------
+	socket.on('playerDead', function(data){
+		map = data.gameMap;
+	});
+	socket.on('wellChange', function(data){
+		player.wellBeing = data.wellBeing;
+	});
+	//
+	setInterval(function(){
+		document.addEventListener('mousedown', drawRightBar);
+		document.addEventListener('keydown', mapV);
+		document.addEventListener('mousedown', claim);
+		document.addEventListener('mousedown', drawLeftBar);
+		
+		if(delta){
+			if(player.tileSelected != 0){
+				map[player.tileSelected.y][player.tileSelected.x].selected = true;
+				player.tileSelected = map[player.tileSelected.y][player.tileSelected.x];
+			}
+			drawLeftBar(0);
+			drawRightBar(0);
+			delta = false;
+		}
+		if(drawDelta){
+			if(map != 0){
+				draw();
+				drawDelta = false;
+			}
+		}
+	}, 16);
+</script>
+</body>
+</html>

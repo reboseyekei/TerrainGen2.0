@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<canvas id = "leftBar" width="125" height="720" style = "position: absolute; left: 1px; border: 0px solid black;"></canvas>
+	<canvas id = "map" width="2000" height="2000" style = "position: absolute; left: 131px; border: 0px solid black;"></canvas>
+	<canvas id = "rightBar" width="480" height="720" style = "position: absolute; left: 1034px; border: 0px solid black;"></canvas>
+	<div id = "test" min-width = "100%"></div> 
+</head>
+<body>
+	<script>
+		const MAPSIZE = 100;
+	
+		//Create Canvases
+		var c = document.getElementById("map");
+		var r = document.getElementById("rightBar");
+		var l = document.getElementById("leftBar");
+		var ctx = c.getContext("2d");
+		var rtx = r.getContext("2d");
+		var ltx = l.getContext("2d");
+		//Scaling for high dpi canvas
+		const devZoom = window.devicePixelRatio/(window.outerWidth/window.innerWidth);
+		const scale = Math.ceil(100 * (screen.width * devZoom/1920) * (screen.height * devZoom/1080))/100;
+		c.style.height = MAPSIZE + "px";
+		c.style.width = MAPSIZE + "px";
+		r.style.height = "" + r.height + "px";
+		r.style.width = "" + r.width + "px";
+		l.style.height = "" + l.height + "px";
+		l.style.width = "" + l.width + "px";
+		r.width *= scale;
+		r.height *= scale;
+		l.width *= scale;
+		l.height *= scale;
+		c.width *= scale;
+		c.height *= scale;
+		rtx.scale(scale, scale);
+		ctx.scale(scale, scale);
+		ltx.scale(scale, scale);
+		//Create Map
+		function setMapDSize(w, h)
+		{
+			c.style.width = "" + w +"px";
+			c.style.height = "" + h +"px";
+			
+			c.width = w * scale;
+			c.height = h * scale;
+			ctx.scale(scale, scale);
+		}
+		
+		
+		var map = new Array(MAPSIZE);
+		
+		//Classes: -----------------
+		function Tile()
+		{
+			this.elevation = 0;
+		}
+		//End Classes--------------
+		
+		for(i = 0; i < MAPSIZE; i++){
+			map[i] = new Array(MAPSIZE);
+			for(j = 0; j < MAPSIZE; j++){
+				map[i][j] = new Tile();
+			}
+		}
+		var t0;
+		var t1;
+		function drawElevationMap()
+		{
+			ctx.clearRect(0, 0, 840, 720);
+			c.width = MAPSIZE;
+			c.height = MAPSIZE;
+			var lastElev = -1;
+			var rgbGrass;
+			var rgbBeach;
+			for(i = 0; i < MAPSIZE; i++){
+				for(j = 0; j < MAPSIZE; j++){
+					if(map[i][j].elevation != lastElev){
+						rgbGrass = (Math.floor((map[i][j].elevation * 200)));
+						rgbBeach = 200 - (Math.floor((map[i][j].elevation * 100)));
+						if(map[i][j].elevation <= 0){
+							ctx.fillStyle = "blue";
+						}
+						else if(map[i][j].elevation < .05){
+							ctx.fillStyle = "tan";
+						}
+						else if(map[i][j].elevation <= .1){
+							ctx.fillStyle = "lightgreen";
+						}
+						else if(map[i][j].elevation <= .25){
+							ctx.fillStyle = "green";
+						}
+						else if(map[i][j].elevation <= 0.4){
+							ctx.fillStyle = "darkgreen";
+						}	
+						else if(map[i][j].elevation <= 0.6){
+							ctx.fillStyle = "olive";
+						}
+						else if(map[i][j].elevation <= .8){
+							ctx.fillStyle = "black";
+						}
+						else if(map[i][j].elevation <= 0.9){
+							ctx.fillStyle = "grey";
+						} 
+						else {
+							ctx.fillStyle = "rgb(255, 255, 255)";
+						}
+						lastElev = map[i][j].elevation;
+					}
+					if(map[i][j].elevation == 50){
+							ctx.fillStyle = "red";
+						}
+					ctx.fillRect(j*1, i*1, 1, 1);
+				}
+			}
+		}
+		function genIsland(size, steps){
+			var upbound = MAPSIZE - 10;
+			var floor = 1;
+			var x1 = Math.floor(Math.random() * (upbound-floor)) + floor;
+			var x2 = x1 + Math.floor(Math.random() * (size-x1));
+			var y1 = Math.floor(Math.random() * (upbound-floor)) + floor;
+			var y2 = y1 + Math.floor(Math.random()*(size-x1));
+			map[safeC(y1)][safeC(x1)].elevation = 50;
+			map[safeC(y2)][safeC(x2)].elevation = 50;
+			for(i = 0; i < steps; i++){
+				upbound = x2;
+				floor = x1;
+				x2 = x1 + Math.floor(Math.random() * (x2-x1));
+				x1 = Math.floor(Math.random() * (upbound-floor)) + floor;
+				upbound = y2;
+				floor = y1;
+				y2 = y1 + Math.floor(Math.random()*(y2-y1));
+				y1 = Math.floor(Math.random() * (upbound-floor)) + floor;
+				map[safeC(y1)][safeC(x1)].elevation = 1;
+				map[safeC(y2)][safeC(x2)].elevation = 1;
+			}
+		}
+		function safeC(a, MS){
+			if(!MS){ MS = MAPSIZE; }
+			if(a >= MS){
+				return a%MS;
+			}
+			else if(a < 0){
+				return safeC(a+MS);
+			}
+			return a;
+		}
+		genIsland(90, 20);
+		drawElevationMap();
+
+	</script>
+</body>
+</html>

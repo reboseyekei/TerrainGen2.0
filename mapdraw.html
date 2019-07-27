@@ -48,6 +48,87 @@
 		var map = new Array(MAPSIZE);
 		
 		//Classes: -----------------
+		/*	var tileWidth = 14;
+		var tileHeight = 7;
+		function drawITile(x, y, color){
+			var startX = c.offsetWidth/2+(x-y)*tileWidth/2;
+			var startY = 1200+((x+y)*tileHeight/2);
+			ctx.fillStyle = color;
+			ctx.beginPath();
+			ctx.moveTo(startX, startY);
+			ctx.lineTo(startX + tileWidth/2, startY + tileHeight/2); //Right Corner
+			ctx.lineTo(startX, startY + tileHeight); //Bottom Corner
+			ctx.lineTo(startX - tileWidth/2, startY + tileHeight/2); //Left Corner
+			ctx.lineTo(startX, startY); //Top SCorner
+			ctx.closePath();
+			ctx.fill();
+		}
+		function drawBlock(x, y, z, type) {
+			var top, right, left;
+			right = "#cccccc";
+			left = "#999999";
+			switch(type){
+				case 'w': top = "blue"; left = "rgb(0, 106, 220)"; right = "blue"; break;
+				case 'r': left = "rgb(0, 106, 220)"; right = "rgb(0, 106, 220)";top = "rgb(0, 106, 220)"; break;
+				case 'g': left = "#36a165"; right = "#4FBA7F"; top = "mediumseagreen"; break;
+				case 's': top = "lightgreen";left = "#82d882"; right = "#9aef9a"; break; 
+				case 'd': top = "tan";left = "#bea37f"; right = "#d6ba96"; break; 
+				case 'c': top = "tan";left = "#bea37f"; right = "#d6ba96"; break; 
+				case 'h': top = "olivedrab"; left = "#56721C"; right = "#89A54F"; break; 
+				case 'm': top = "#B4B4B4"; left = "#909090"; right = "#C3C3C3"; break;
+				case 'i': top = "#36a165"; left = "#2B8151"; right = "#5EB484"; break;
+				case 'f': top = "#005000"; left = "#004000"; right = "#337333"; break;
+				case 'l': top = "grey"; left = "#666666"; break;
+				case 'e': top = "#E9FFFF"; left = "#EDFFFF"; right = "#E9FFFF"; break; //ice
+				case 'n': top = "#EFFCFF";left = "#BFCACC"; right = "#F2FDFF"; break; //snow 
+				default:  top = "red"; break;
+			}
+			
+			var startX = c.offsetWidth/2+(x-y)*tileWidth/2
+			var startY = 60+(x+y)*tileHeight/2
+			
+			// draw top
+			ctx.beginPath();
+			ctx.moveTo(startX, startY+( -z * tileHeight));
+			ctx.lineTo(startX +(tileWidth / 2),startY + (tileHeight / 2 - z * tileHeight));
+			ctx.lineTo(startX,startY + (tileHeight - z * tileHeight));
+			ctx.lineTo(startX-(tileWidth / 2),startY + (tileHeight / 2 - z * tileHeight));
+			ctx.closePath();
+			ctx.fillStyle = top;
+			ctx.fill();
+
+			// draw left
+			ctx.beginPath();
+			ctx.moveTo(startX-(tileWidth / 2),startY+(tileHeight/ 2 - z * tileHeight));
+			ctx.lineTo(startX,startY+(tileHeight - z * tileHeight));
+			ctx.lineTo(startX,startY+(tileHeight));
+			ctx.lineTo(startX-(tileWidth / 2),startY+(tileHeight / 2));
+			ctx.closePath();
+			ctx.fillStyle = left;
+			ctx.fill();
+
+			// draw right
+			ctx.beginPath();
+			ctx.moveTo(startX+(tileWidth / 2),startY+(tileHeight / 2 - z * tileHeight));
+			ctx.lineTo(startX,startY+(tileHeight - z * tileHeight));
+			ctx.lineTo(startX,startY+(tileHeight));
+			ctx.lineTo(startX+(tileWidth / 2),startY+(tileHeight / 2));
+			ctx.closePath();
+			ctx.fillStyle = right;
+			ctx.fill();		
+		}
+		function drawIsoMap()
+		{
+			setMapDSize(1200, 700);
+			for(i = 0; i < Math.floor(1200/tileWidth); i++){
+				for(j = 0; j < Math.floor(1200/tileWidth); j++){
+					var yLook = safeC(i + p.yView);
+					var xLook = safeC(j + p.xView);
+					drawBlock(j, i, 10*map[safeC(i + p.yView)][safeC(j + p.xView)].elevation,map[yLook][xLook].type );
+				}
+			}
+		}
+		*/
 		function Building(){
 			this.name;
 			this.effect;
