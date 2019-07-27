@@ -713,7 +713,7 @@
 						if(rS > 0){
 							map[y][x].type = 'r';
 							map[y][x].id = id;
-							map[y][x].elevation = 0;
+							map[y][x].elevation = -.1;
 							for(a = -1; a < 2; a++){
 								for(b = -1; b < 2; b++){
 									map[safeC(y+a)][safeC(x+b)].wetness += .25;

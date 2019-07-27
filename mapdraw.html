@@ -18,8 +18,8 @@
 		//Scaling for high dpi canvas
 		const devZoom = window.devicePixelRatio/(window.outerWidth/window.innerWidth);
 		const scale = Math.ceil(100 * (screen.width * devZoom/1920) * (screen.height * devZoom/1080))/100;
-		c.style.height = "4000px";
-		c.style.width = "4000px";
+		c.style.height = "2000px";
+		c.style.width = "2000px";
 		r.style.height = "" + r.height + "px";
 		r.style.width = "" + r.width + "px";
 		l.style.height = "" + l.height + "px";
@@ -48,6 +48,18 @@
 		var map = new Array(MAPSIZE);
 		
 		//Classes: -----------------
+		function Building(){
+			this.name;
+			this.effect;
+			this.cost;
+			this.description;
+		}
+		var buildings = [];
+		var bNames = ["Town Center", "Prison", "Fortress", "Manor", "Training Grounds", "Statue", "Farm", "Shop", "Barracks", "Blacksmith", "Plaza", "Market", "Granary", "Warehouse", "Workshop", "Bank", "Temple", "Tavern", "Port" ];
+		for(i = 0; i < bNames.length; i++){
+			buildings[i] = new Building();
+			buildings[i].name = bNames[i];
+		}
 		function Tile()
 		{
 			this.owner = -1;
@@ -61,8 +73,49 @@
 			this.building = -1;
 			this.city = -1;
 		}
-		
-	
+		function Noble()
+		{
+			this.name = "";
+			this.skill = 0;
+		}
+		function Society(){
+			this.levels = [];
+		}
+		function Resources(){
+			this.dirt = 0; this.sand = 0; this.ore = 0;
+			this.wood = 5; this.stone = 0;
+			this.gold = 5; this.food = 10;
+			this.population = 200;
+			this.manpower = 100;
+			this.sailors = 0;
+		}
+		function City(){
+			this.name = "";
+			this.size = 0;
+			this.administrator;
+			this.development;
+			this.population;
+			this.income;
+			this.housing;
+			this.food;
+		}
+		function Player(){
+			this.resources = new Resources();
+			this.cities = [];
+			this.menView = [0, -1];
+			this.citInd = -1;
+			this.character;
+			this.action = "claiming";
+			this.turn = 0;
+			this.size = 0;
+			this.color = "red";
+			this.tileSelected
+			this.yView = 0;
+			this.xView = 0;
+			this.zoom = 10;
+		}
+		//End Classes--------------
+		var p = new Player();
 		
 		for(i = 0; i < MAPSIZE; i++){
 			map[i] = new Array(MAPSIZE);
@@ -71,7 +124,21 @@
 				map[i][j].heat = (1.85 - Math.abs(1000 - i)/500) + Math.random() * .15;
 			}
 		}
-		
+		function genName(male){
+			var mBegs = ["Le", "Ke", "Je", "Be", "Me", "Ko", "Ye", "E", "Cy", "Ce", "Ci"];
+			var mMids = ["k", "r", "ke", "re", "vin", "t", "s", "n"];
+			var mEnds = ["os", "ih", "o", "it", "en", "in", "de", "des", "re", "ro", "ov", "us", "on"];
+			
+			var fBegs = ["Ke", "Ti", "Di", "De", "Li", "Ki", "Ve", "Al", "Ma", "Ni", "Ari", "A", "E", "So"];
+			var fMids = ["r", "n", "c", "s", "r", "or", "ret", "ken"];
+			var fEnds = ["a", "i", "ei", "is", "ia", "a", "iev", "ana"];
+			if(male){
+				return "" + mBegs[Math.floor(Math.random() * mBegs.length)] + "" + mMids[Math.floor(Math.random() * mMids.length)] + "" + mEnds[Math.floor(Math.random() * mEnds.length)];
+			}
+			else{
+				return "" + fBegs[Math.floor(Math.random() * fBegs.length)] + "" + fMids[Math.floor(Math.random() * fMids.length)] + "" + fEnds[Math.floor(Math.random() * fEnds.length)];
+			}
+		}
 		var t0;
 		var t1;
 		function drawWetness(){
@@ -190,7 +257,7 @@
 		}
 		function drawEntireMap()
 		{
-			setMapDSize(MAPSIZE, MAPSIZE);
+			setMapDSize(MAPSIZE, MAPSIZE	)
 			ctx.clearRect(0, 0, MAPSIZE, MAPSIZE);
 			for(i = 0; i < MAPSIZE; i++){
 				for(j = 0; j < MAPSIZE; j++){
@@ -726,8 +793,9 @@
 		}
 		genWorld();
 		drawEntireMap();
+		for(i = 0; i < MAPSIZE; i++){ for(j = 0; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ p.yView = i; p.xView = j; i = MAPSIZE; j = i; }}}
 		var tz = performance.now();
-		console.log(tz);
+		
 
 	</script>
 </body>
