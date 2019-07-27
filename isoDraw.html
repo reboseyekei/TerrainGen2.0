@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<style type="text/css">
+	html, body {
+		margin: 0px;
+	}
+	canvas {
+		display: block;
+		position: absolute;
+		top: 0px;
+		left: 0px;
+	}
+	</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+	var c = document.getElementById("canvas");
+	ctx = canvas.getContext("2d");
+	width = canvas.width = window.innerWidth;
+	height = canvas.height = window.innerHeight;
+	const devZoom = window.devicePixelRatio/(window.outerWidth/window.innerWidth);
+	const scale = Math.ceil(100 * (screen.width * devZoom/1920) * (screen.height * devZoom/1080))/100;
+	c.style.height = "2000px";
+	c.style.width = "2000px";
+	function setMapDSize(w, h)
+	{
+		c.style.width = "" + w +"px";
+		c.style.height = "" + h +"px";
+		
+		c.width = w * scale;
+		c.height = h * scale;
+		ctx.scale(scale, scale);
+	}
+	tileWidth = 50,
+	tileHeight = 25;
+
+	ctx.translate(width / 2, 50);
+
+	function randomColor() {
+		var r = Math.floor(Math.random() * 255);
+		var g = Math.floor(Math.random() * 255);
+		var b = Math.floor(Math.random() * 255);
+		return "rgb(" + r + "," + g + "," + b + ")";
+	}	
+
+
+	function drawTile(x, y, color) {
+		ctx.save();
+		ctx.translate((x - y) * tileWidth / 2, (x + y) * tileHeight / 2);
+
+		ctx.beginPath();
+		ctx.moveTo(0, 0);
+		ctx.lineTo(tileWidth / 2, tileHeight / 2);
+		ctx.lineTo(0, tileHeight);
+		ctx.lineTo(-tileWidth / 2, tileHeight / 2);
+		ctx.closePath();
+		ctx.fillStyle = color;
+		ctx.fill();
+
+		ctx.restore();
+	}
+</script>
+</body>
+</html>
