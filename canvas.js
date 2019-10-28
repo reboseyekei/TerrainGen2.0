@@ -6,8 +6,15 @@
 		var rtx = r.getContext("2d");
 		var ltx = l.getContext("2d");
 		//Scaling for high dpi canvas
-		const devZoom = window.devicePixelRatio/(window.outerWidth/window.innerWidth);
-		const scale = Math.ceil(100 * (screen.width * devZoom/1920) * (screen.height * devZoom/1080))/100;
+		const devZoom = window.devicePixelRatio;
+		const scale = Math.round(10 * (screen.width * devZoom/1920) * (screen.height * devZoom/1080))/10;
+		const pScale = Math.round(100*(screen.width/1920))/100;
+		r.width *= pScale;
+		r.height *= pScale;
+		l.width *= pScale;	
+		l.height *= pScale;
+		c.width *= pScale;
+		c.height *= pScale;
 		c.style.height = "" + c.height + "px";
 		c.style.width = "" + c.width + "px";
 		r.style.height = "" + r.height + "px";
@@ -23,14 +30,16 @@
 		rtx.scale(scale, scale);
 		ctx.scale(scale, scale);	
 		ltx.scale(scale, scale);
+		c.style.left = 10 + l.offsetLeft + l.width/scale + "px";
+		r.style.left = 10 + c.offsetLeft + c.width/scale + "px";
 		//Create Map
 		function setMapDSize(w, h)
 		{
 			c.style.width = "" + w +"px";
 			c.style.height = "" + h +"px";
 			
-			c.width = w * scale;
-			c.height = h * scale;
+			c.width = w;
+			c.height = h;
 			ctx.scale(scale, scale);
 		}
 		

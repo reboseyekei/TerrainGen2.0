@@ -4,10 +4,10 @@
 	<canvas id = "leftBar" width="350" height="900" style = "position: absolute;top: 15px; left: 10px; border: 1px solid black;"></canvas>
 	<canvas id = "map" width="1080" height="900" style = "position: absolute; top: 15px; left: 371px; border: 1px solid black;"></canvas>
 	<canvas id = "rightBar" width="410" height="900" style = "position: absolute;top: 15px; left: 1462px; border: 1px solid black;"></canvas>
-	<div id = "test" min-width = "100%"></div> 
+	<style> body { background-color: rgb(41,49,52)</style>
 </head>
 <body>
-
+		<script src = "/socket.io/socket.io.js"></script>
 		<script type="text/javascript" src="canvas.js"></script>
 		<script type="text/javascript" src="classes.js"></script>
 		<script type="text/javascript" src="map.js"></script>
@@ -25,10 +25,7 @@
 		var establishing = false;
 		var map = new Array(MAPSIZE);
 		var p = new Player();
-		p.resources.wood = 10;
-		p.resources.manpower = 100;
-		p.resources.food = 200;
-		p.resources.population = 200;
+		p.manpower = 100;
 		for(i = 0; i < MAPSIZE; i++){
 			map[i] = new Array(MAPSIZE);
 			for(j = 0; j < MAPSIZE; j++){
@@ -56,18 +53,12 @@
 			else if(event.keyCode == 90){
 				if(p.zoom < 45){
 					p.zoom++;
-					while((c.height % p.zoom != 0 || c.width % p.zoom != 0) && p.zoom < 45){
-						p.zoom++;
-					}
 					drawDelta = true;
 				}
 			}
 			else if(event.keyCode == 88){
 				if(p.zoom > 2){
 					p.zoom--;
-					while((c.height % p.zoom != 0 || c.width % p.zoom != 0) && p.zoom > 4){
-						p.zoom--;
-					}
 					drawDelta = true;
 				}
 			}
@@ -76,6 +67,55 @@
 				drawDelta = true;
 			}
 			else { drawDelta = false; }
+		}
+		function build(e, y1, x1){
+			var x, y;
+			var tY = tileSelected[0];
+			var tX = tileSelected[1];
+			if(e == 0){
+				x = x1; y = y1;
+			}
+			else{
+				x = safeC(p.xView + Math.floor((e.clientX - c.getBoundingClientRect().x)/(p.zoom)));
+				y = safeC(p.yView + Math.floor((e.clientY - c.getBoundingClientRect().y)/(p.zoom)));
+			}
+			tileSelected[0] = y;
+			tileSelected[1] = x;
+			drawTile(y, x);
+			if(e.type == "mousemove" || e == 0){
+				if(canBuy(y, x)){
+					if(map[y][x].building[0] == -1 && map[y][x].elevation > 0 && map[y][x].owner == p.turn && (map[y][x].type == 'g' || map[y][x].type == 'i' || map[y][x].type == 'c')){
+						map[y][x].building = [p.menView[1][0], p.menView[1][1]];
+						if(buildings[p.menView[1][0]][p.menView[1][1]].cost[0] > 0){
+							p.zones[map[y][x].zone].res.wood -= buildings[p.menView[1][0]][p.menView[1][1]].cost[0];
+						}
+						p.manpower -= buildings[p.menView[1][0]][p.menView[1][1]].cost[3];
+						buildings[p.menView[1][0]][p.menView[1][1]].effect(0);
+						drawTile(y, x);
+						if(y > 0){
+							drawTile(y-1, x);
+						}
+						if(x > 0){
+							drawTile(y, x-1);
+						}
+						if(x-p.xView < Math.floor(cWidth/p.zoom)){
+							drawTile(y, x+1);
+						}
+						if(y-p.yView < Math.floor(cHeight/p.zoom)){
+							drawTile(y+1, x);
+						}
+						delta = true;
+					}
+				}
+				else {
+					p.action = "claiming";
+				}
+			}
+			else {
+				c.removeEventListener('mousemove', build);
+				c.removeEventListener('mouseup', build);
+			}
+			drawTile(tY, tX);
 		}
 		function claim(e, y1, x1){
 			var x, y;
@@ -90,6 +130,7 @@
 			}
 			tileSelected[0] = y;
 			tileSelected[1] = x;
+			drawTile(y, x);
 			if(e.type == "mousemove" || e == 0){
 				var canClaim = p.size == 0 && map[y][x].elevation > 0;
 				if(!canClaim){
@@ -100,10 +141,10 @@
 							}
 						}
 					}
-					canClaim = canClaim && (p.resources.manpower >= 1) && (map[y][x].owner == -1) && map[y][x].elevation > 0;
+					canClaim = canClaim && (p.manpower >= 1) && (map[y][x].owner == -1) && map[y][x].elevation > 0;
 				}
 				if(canClaim){	
-					p.resources.manpower--;
+					p.manpower--;
 					map[y][x].owner = p.turn;
 					p.size++;
 					p.territory.push([y, x]);
@@ -131,7 +172,7 @@
 			if(e){
 				var x = safeC(p.xView + Math.floor((e.clientX - c.getBoundingClientRect().x)/(p.zoom)));
 				var y = safeC(p.yView + Math.floor((e.clientY - c.getBoundingClientRect().y)/(p.zoom)));
-				if(x > 0 && y > 0 && x < e.clientX < c.width && e.clientY < c.height){
+				if(x >= 0 && y >= 0 && x < e.clientX < c.width && e.clientY < c.height){
 					var tY = y;
 					var tX = x;
 					if(tileSelected.length == 2){
@@ -145,7 +186,7 @@
 					}
 					delta = true;
 					if(p.action != ""){
-						if(p.action == "claiming" && p.resources.manpower > 1){
+						if(p.action == "claiming" && p.manpower > 1){
 							if(e.shiftKey){
 								c.addEventListener('mousemove', claim);
 								c.addEventListener('mouseup', claim);
@@ -156,57 +197,15 @@
 							}
 						}
 						else if(map[y][x].owner == p.turn){
-							if(p.action == "road" && p.resources.manpower > 2){
+							if(p.action == "road" && p.manpower > 2){
 								if(map[y][x].travelQ == 0){
-									p.resources.manpower -= 2;
+									p.manpower -= 2;
 									map[y][x].travelQ++;
 								}
 							}
-							else if((p.action == "digging" || (p.resources.dirt > 0 && p.action == "filling")) && p.resources.manpower >= 5){
-								p.resources.manpower -= 5;
-								if(p.action == "filling" && map[y][x].elevation < .5){
-									p.resources.dirt--;
-									map[y][x].elevation += .01;
-									if(map[y][x].elevation > 0){
-										if(map[y][x].type == 'w' || map[y][x].type == 'r'){
-											map[y][x].type = 'g';
-										}
-										if(map[y][x].elevation > .2){
-											map[y][x].type = 'i';
-										}
-										if(map[y][x].elevation > .4){
-											map[y][x].type = 'h';
-										}
-									}
-								}
-								else if(map[y][x].elevation > -1.1){
-									if(map[y][x].elevation <= 0){
-										p.resources.sand++;
-										map[y][x].elevation -= .01;
-									}
-									else{
-										if(map[y][x].type == 'c' || map[y][x].type == 'd'){
-											p.resources.sand++;
-										}
-										else{
-											p.resources.dirt++;
-										}
-										map[y][x].elevation -= .01;
-										if(map[y][x].elevation <= 0 && map[y][x].wetness > 0){
-											map[y][x].type = 'w';
-										}
-										else {
-											map[y][x].type = 'p';
-										}
-									}
-								}
-							}
-							else if(p.action == "clearing" && p.resources.manpower >= 2){
+							else if(p.action == "clearing" && p.manpower >= 2){
 								if(map[y][x].type == 'f'){
-									p.resources.manpower -= 2;
-									p.dom.income.wood -= .1;
-									p.dom.income.food -= 1;
-									p.resources.wood+=4;
+									p.manpower -= 2;
 									if(map[y][x].wetness == 0){
 										map[y][x].type = 's';
 									}
@@ -228,21 +227,33 @@
 									drawTile(y, x);
 								}
 							}
+							else if(p.action == "building"){
+								if(e.shiftKey){
+									c.addEventListener('mousemove', build);
+									c.addEventListener('mouseup', build);
+									build(0, y, x);
+								}
+								else { p.action = "claiming"; }
+							}
+						}
+						else { 
+							p.action = "claiming";
 						}
 					}
 				}
 			}
 		}
 		genWorld();
-		for(i = 100; i < MAPSIZE; i++){ for(j = 100; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ p.yView = i; p.xView = j; i = MAPSIZE; j = i; }}} //Make sure view is on grass
+		for(i = 50; i < MAPSIZE; i++){ for(j = 50; j < MAPSIZE; j++){ if(map[i][j].type == 'g'){ p.yView = i; p.xView = j; i = MAPSIZE; j = i; }}} //Make sure view is on grass
 		var t = 0;
 		setInterval(function(){
 			if(start){
 				t++;
 			}
-			if(t==2500){
+			if(t==1000){
 				scanRoads();
 				rIncome();
+				p.manpower++;
 				t = 0;
 				delta = true;
 			}
